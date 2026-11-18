@@ -59,12 +59,12 @@ An evaluator uses an LLM as a judge to score every new trace. You will build the
 - Provider name: `openrouter`
 - LLM adapter: `openai`
 - API key: the workshop LLM key
-- Under **Advanced Settings**, set the base URL to `https://openrouter.ai/api/v1`, turn off the default models, and add `deepseek/deepseek-v4.1-flash-1017` as a custom model.
+- Under **Advanced Settings**, set the base URL to `https://openrouter.ai/api/v1`, turn off the default models, and add `anthropic/claude-haiku-5.5` as a custom model.
 
 **Create the evaluator.** Open **Evaluators**, create a new LLM-as-a-judge evaluator and set:
 
 - Name: `answers-the-question`. Type it exactly, because the score uses the same name.
-- Model: `deepseek/deepseek-v4.1-flash-1017`, from the `openrouter` connection.
+- Model: `anthropic/claude-haiku-5.5`, from the `openrouter` connection.
 - Score type: Boolean.
 - Prompt: copy the whole block below.
 

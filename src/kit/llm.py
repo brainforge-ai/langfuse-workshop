@@ -11,7 +11,7 @@ from kit.errors import LLM_KEY, LLM_MODEL, LLM_RATE, KitError, connection_error,
 
 # The one place the model is named. The Langfuse LLM connection uses the same model.
 BASE_URL = "https://openrouter.ai/api/v1"
-MODEL = "deepseek/deepseek-v4.1-flash-1017"
+MODEL = "anthropic/claude-haiku-5.5"
 MAX_OUTPUT_TOKENS = 1024
 KEY_PREFIX = "sk-or-"
 # The name attendees give the LLM connection in Langfuse.

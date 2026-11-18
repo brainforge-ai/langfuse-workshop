@@ -16,9 +16,9 @@
   {
     "id": "T03",
     "customer": "pennine-surveyors",
-    "complaint": "Pennine Surveyors uses the typical detached price in Sheffield for its fee schedule and expects a figure around £350,000.",
-    "question": "What was the median price of a detached house in Sheffield between 1 January 2024 and 31 December 2024?",
-    "expected": "£349,500."
+    "complaint": "Pennine Surveyors sizes its valuation team from Sheffield's detached-house sales and expects a figure around 1,700 for 2024.",
+    "question": "How many detached houses were sold in Sheffield between 1 January 2024 and 31 December 2024?",
+    "expected": "1,735."
   },
   {
     "id": "T04",

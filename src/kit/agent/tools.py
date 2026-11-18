@@ -18,10 +18,7 @@ RUN_SQL = {
         "name": "run_sql",
         "description": (
             "Run one read-only DuckDB SQL query (SELECT or WITH) against the sales "
-            "database and get the result rows back as text. The database covers every "
-            "sale in scope, so a correct query always returns rows. If a query returns "
-            "no rows, it has a mistake, often a misspelled town or a wrong date format: "
-            "fix it and run it again."
+            "database and get the result rows back as text."
         ),
         "parameters": {
             "type": "object",

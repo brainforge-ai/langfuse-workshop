@@ -6,7 +6,7 @@ import argparse
 import getpass
 from collections.abc import Callable
 
-from kit import config, console, history, preflight, state, tracing
+from kit import config, console, history, llm, preflight, state, tracing
 from kit.errors import LF_TRACE_UNCONFIRMED
 from kit.langfuse_api import Project, region_name
 from kit.preflight import Services
@@ -19,7 +19,7 @@ PROMPTS = (
     (config.LANGFUSE_SECRET_KEY, "Tracing secret key (sk-lf-...)", True),
     (config.AGENT_PUBLIC_KEY, "Agent public key (pk-lf-...)", False),
     (config.AGENT_SECRET_KEY, "Agent secret key (sk-lf-...)", True),
-    (config.LLM_KEY, "Workshop LLM key (sk-ant-...)", True),
+    (config.LLM_KEY, "Workshop LLM key (sk-or-...)", True),
 )
 
 NEXT_COMMAND = "uv run kit tickets"
@@ -120,7 +120,7 @@ def load_history(
 def run_set_llm_key(*, ask_secret: Ask = getpass.getpass, services: Services | None = None) -> int:
     """Replace only the workshop LLM key, prove it, and name both places the key lives."""
     services = services or Services()
-    key = config.clean(ask_secret("New workshop LLM key (sk-ant-...): "))
+    key = config.clean(ask_secret("New workshop LLM key (sk-or-...): "))
     preflight.check_llm_prefix(key)
     console.say(f"  -> {console.mask(key)}")
 
@@ -134,7 +134,7 @@ def run_set_llm_key(*, ask_secret: Ask = getpass.getpass, services: Services | N
     console.say(
         "\nThe key switch has two steps:\n"
         "  1. Done: the kit now uses the new key.\n"
-        "  2. In Langfuse, open Settings > LLM Connections, edit `anthropic` and paste the same key."
+        f"  2. In Langfuse, open Settings > LLM Connections, edit `{llm.CONNECTION_NAME}` and paste the same key."
     )
     return 0
 

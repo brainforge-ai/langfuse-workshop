@@ -54,16 +54,17 @@ Open the traces. Each one has a root observation named `sql-agent` with the ques
 
 An evaluator uses an LLM as a judge to score every new trace. You will build the first one yourself.
 
-**Add the LLM connection.** In Langfuse open **Settings > LLM Connections** and add a connection:
+**Add the LLM connection.** The workshop model runs on [OpenRouter](https://openrouter.ai), which speaks the OpenAI API, so the connection uses the `openai` adapter. In Langfuse open **Settings > LLM Connections** and add a connection:
 
-- Provider name: `anthropic`
-- LLM adapter: `anthropic`
+- Provider name: `openrouter`
+- LLM adapter: `openai`
 - API key: the workshop LLM key
+- Under **Advanced Settings**, set the base URL to `https://openrouter.ai/api/v1`, turn off the default models, and add `deepseek/deepseek-v4.1-flash-1017` as a custom model.
 
 **Create the evaluator.** Open **Evaluators**, create a new LLM-as-a-judge evaluator and set:
 
 - Name: `answers-the-question`. Type it exactly, because the score uses the same name.
-- Model: `claude-haiku-5-5`, from the `anthropic` connection.
+- Model: `deepseek/deepseek-v4.1-flash-1017`, from the `openrouter` connection.
 - Score type: Boolean.
 - Prompt: copy the whole block below.
 
@@ -121,9 +122,9 @@ The tickets were the visible symptoms. The scored history holds causes nobody ha
 When the shared key hits its cap, the kit prints `LLM-KEY` with two steps. Do both:
 
 1. Run `uv run kit set-llm-key` and paste the reserve key the presenters share.
-2. In Langfuse open **Settings > LLM Connections**, edit `anthropic` and paste the same key, so your evaluators keep working.
+2. In Langfuse open **Settings > LLM Connections**, edit `openrouter` and paste the same key, so your evaluators keep working.
 
-The workshop key stops working after Nov 19. Any Anthropic API key works in its place, in the same two places.
+The workshop key stops working after Nov 19. Any OpenRouter API key works in its place, in the same two places.
 
 ## Troubleshooting
 
@@ -136,14 +137,14 @@ Every error prints a code and a fix line. Running `uv run kit setup` again re-ch
 | `LF-KEYPAIR` | Langfuse did not accept a key pair. | Copy both keys of that pair again, or create a new pair. |
 | `LF-PROJECT-MISMATCH` | The agent pair belongs to a different project. | Create the agent pair in the `langfuse-workshop` project. |
 | `LF-TRACE-UNCONFIRMED` | The hello trace has not shown up yet. | Open the printed link after a minute. Setup carries on. |
-| `LLM-NOT-AN-LLM-KEY` | The LLM slot holds a Langfuse key. | Paste the workshop key from 1Password. It starts with `sk-ant-`. |
+| `LLM-NOT-AN-LLM-KEY` | The LLM slot holds a Langfuse key. | Paste the workshop key from 1Password. It starts with `sk-or-`. |
 | `LLM-KEY` | The LLM key was rejected, capped or revoked. | Follow the two steps in "If the LLM key stops working". |
 | `LLM-RATE` | The LLM key is busy. | Wait 30 seconds and run the command again. |
-| `LLM-MODEL` | The model is not available to this key. | Tell a presenter. |
+| `LLM-MODEL` | The key may not call the workshop model, or no provider can serve it right now. | Tell a presenter. |
 | `NET-TLS` | Something on the network intercepts secure connections. | Switch to another network, such as a phone hotspot. |
 | `NET-OFFLINE` | The kit cannot reach the internet. | Check your Wi-Fi. |
 | `HIST-ALREADY-LOADED` | This project already holds workshop history. | Nothing to do if you can see it. To start clean, create a new project and run setup with its keys. |
-| `EVAL-NO-CONNECTION` | The project has no Anthropic LLM connection. | Add the `anthropic` connection from step 3, then install again. |
+| `EVAL-NO-CONNECTION` | The project has no OpenRouter LLM connection. | Add the `openrouter` connection from step 3, then install again. |
 | `EVAL-NAME-TAKEN` | An evaluator the kit did not make already uses one of its names. | Rename or delete that evaluator, then install again. |
 | `KIT-NOT-SET-UP` | The kit has no saved keys. | Run `uv run kit setup`. |
 | `KIT-UNEXPECTED` | Something went wrong inside the kit. | Show the log file it names to a presenter. |

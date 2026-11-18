@@ -2,26 +2,30 @@ import json
 import re
 from types import SimpleNamespace as NS
 
-import anthropic
 import httpx2
+import openai
 import pytest
 from langfuse import Langfuse
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
-from kit import cli, config, state, tickets, tracing
+from kit import cli, config, llm, state, tickets, tracing
 from kit.agent import agent
 from kit.agent.tools import Database
 
 
+def reply(content=None, tool_calls=None):
+    message = NS(content=content, tool_calls=tool_calls)
+    finish = "tool_calls" if tool_calls else "stop"
+    return NS(choices=[NS(message=message, finish_reason=finish)], usage=NS(prompt_tokens=10, completion_tokens=5))
+
+
 def tool_call(query, call_id="t1"):
-    return NS(
-        content=[NS(type="tool_use", id=call_id, name="run_sql", input={"query": query})],
-        usage=NS(input_tokens=10, output_tokens=5),
-    )
+    arguments = json.dumps({"query": query})
+    return reply(tool_calls=[NS(id=call_id, type="function", function=NS(name="run_sql", arguments=arguments))])
 
 
 def text(answer):
-    return NS(content=[NS(type="text", text=answer)], usage=NS(input_tokens=10, output_tokens=5))
+    return reply(content=answer)
 
 
 class ScriptedModel:
@@ -31,7 +35,7 @@ class ScriptedModel:
         self.responses = list(responses)
         self.repeat_last = repeat_last
         self.calls = []
-        self.messages = self
+        self.chat = NS(completions=self)
 
     def create(self, **request):
         self.calls.append(request)
@@ -117,7 +121,7 @@ def test_non_select_statement_is_refused_and_run_continues(db, statement):
     result = agent.run("Do something", langfuse=client, llm_client=model, customer="acme", db=db)
 
     assert result.answer == "Sorry, I could not run that."
-    tool_result = model.calls[1]["messages"][-1]["content"][0]["content"]
+    tool_result = model.calls[1]["messages"][-1]["content"]
     assert tool_result.startswith("Error: only a single SELECT or WITH query")
     assert db.run("SELECT count(*) FROM sales").row_count == 1
 
@@ -127,18 +131,39 @@ def test_requests_use_the_kit_model_settings(db):
     model = ScriptedModel(text("Hello."))
     agent.run("Hi", langfuse=client, llm_client=model, customer="acme", db=db)
     request = model.calls[0]
-    assert request["model"] == "claude-haiku-5-5"
+    assert request["model"] == llm.MODEL == "deepseek/deepseek-v4.1-flash-1017"
     assert request["max_tokens"] == 1024
-    assert request["thinking"] == {"type": "disabled"}
-    assert request["tool_choice"] == {"type": "auto"}
+    assert request["extra_body"] == {"reasoning": {"effort": "none"}}
+    assert request["tool_choice"] == "auto"
+    assert request["messages"][0]["role"] == "system"
     assert not {"temperature", "top_p", "top_k"} & set(request)
+
+
+def test_tool_call_with_broken_arguments_runs_an_empty_query_and_continues(db):
+    client, _ = make_langfuse()
+    broken = reply(tool_calls=[NS(id="t1", type="function", function=NS(name="run_sql", arguments="{not json"))])
+    model = ScriptedModel(broken, text("Done."))
+
+    result = agent.run("Hi", langfuse=client, llm_client=model, customer="acme", db=db)
+
+    assert result.answer == "Done."
+    assert model.calls[1]["messages"][-1]["role"] == "tool"
+    assert model.calls[1]["messages"][-1]["content"].startswith("Error:")
+
+
+def test_upstream_failure_reply_is_a_busy_error(db):
+    client, _ = make_langfuse()
+    failed = NS(choices=[NS(message=NS(content=None, tool_calls=None), finish_reason="error")], usage=None)
+    with pytest.raises(Exception) as excinfo:
+        agent.run("Hi", langfuse=client, llm_client=ScriptedModel(failed), customer="acme", db=db)
+    assert getattr(excinfo.value, "code", None) == "LLM-RATE"
 
 
 # --- Commands, driven through the real CLI entry point -------------------------
 
 
 def status_error(cls, status):
-    request = httpx2.Request("POST", "https://api.anthropic.com/v1/messages")
+    request = httpx2.Request("POST", "https://openrouter.ai/api/v1/chat/completions")
     response = httpx2.Response(status, request=request)
     return cls("rejected", response=response, body=None)
 
@@ -150,7 +175,7 @@ def set_up_kit(kit_home, monkeypatch):
         {
             config.LANGFUSE_PUBLIC_KEY: "pk-lf-1",
             config.LANGFUSE_SECRET_KEY: "sk-lf-1",
-            config.LLM_KEY: "sk-ant-first",
+            config.LLM_KEY: "sk-or-v1-first",
         }
     )
     state.update(host="https://cloud.langfuse.com", project_id="proj1")
@@ -175,14 +200,14 @@ def provider(monkeypatch, behaviour):
         seen.append(api_key)
         return behaviour(api_key)
 
-    monkeypatch.setattr(anthropic, "Anthropic", factory)
+    monkeypatch.setattr(openai, "OpenAI", factory)
     return seen
 
 
 def test_rejected_key_prints_two_step_switch_then_recovers_after_key_change(set_up_kit, monkeypatch, capsys):
     def behaviour(key):
-        if key == "sk-ant-first":
-            return ScriptedModel(status_error(anthropic.AuthenticationError, 401))
+        if key == "sk-or-v1-first":
+            return ScriptedModel(status_error(openai.AuthenticationError, 401))
         return ScriptedModel(text("Fine now."))
 
     keys = provider(monkeypatch, behaviour)
@@ -194,16 +219,16 @@ def test_rejected_key_prints_two_step_switch_then_recovers_after_key_change(set_
     assert "Traceback" not in err
 
     values = config.read_env()
-    values[config.LLM_KEY] = "sk-ant-reserve"
+    values[config.LLM_KEY] = "sk-or-v1-reserve"
     config.write_env(values)
 
     assert cli.main(["ask", "How many sales?"]) == 0
     assert "A: Fine now." in capsys.readouterr().out
-    assert keys == ["sk-ant-first", "sk-ant-reserve"]
+    assert keys == ["sk-or-v1-first", "sk-or-v1-reserve"]
 
 
 def test_rate_limit_on_every_retry_prints_wait_message(set_up_kit, monkeypatch, capsys):
-    provider(monkeypatch, lambda key: ScriptedModel(status_error(anthropic.RateLimitError, 429)))
+    provider(monkeypatch, lambda key: ScriptedModel(status_error(openai.RateLimitError, 429)))
     assert cli.main(["ask", "How many sales?"]) == 1
     err = capsys.readouterr().err
     assert "[LLM-RATE]" in err and "Wait" in err
@@ -212,7 +237,7 @@ def test_rate_limit_on_every_retry_prints_wait_message(set_up_kit, monkeypatch, 
 def test_flush_runs_when_the_agent_fails_partway(set_up_kit, monkeypatch):
     provider(
         monkeypatch,
-        lambda key: ScriptedModel(tool_call("SELECT 1"), status_error(anthropic.InternalServerError, 500)),
+        lambda key: ScriptedModel(tool_call("SELECT 1"), status_error(openai.InternalServerError, 500)),
     )
     assert cli.main(["ask", "How many sales?"]) == 1
     assert set_up_kit.flushes == [True]

@@ -23,3 +23,11 @@ def test_every_command_is_in_the_readme():
 def test_evaluator_one_prompt_block_matches_the_judge_spec():
     block = re.search(r"```text\n(.*?)\n```", README, re.DOTALL).group(1)
     assert block == judges.BY_NAME["answers-the-question"].prompt
+
+
+def test_readme_names_the_kit_model_and_connection():
+    from kit import llm
+
+    assert f"`{llm.MODEL}`" in README
+    assert f"Provider name: `{llm.CONNECTION_NAME}`" in README
+    assert llm.BASE_URL in README

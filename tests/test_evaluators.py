@@ -1,6 +1,7 @@
+import json
 from types import SimpleNamespace as NS
 
-from kit import judges
+from kit import judges, llm
 
 NAMES = [
     "answers-the-question",
@@ -26,15 +27,19 @@ def test_local_runner_returns_the_models_boolean_verdict():
     class Model:
         def create(self, **request):
             calls.append(request)
-            block = NS(type="tool_use", id="v1", name="record_verdict", input={"reasoning": "Declined.", "verdict": False})
-            return NS(content=[block])
+            arguments = json.dumps({"reasoning": "Declined.", "verdict": False})
+            call = NS(id="v1", type="function", function=NS(name="record_verdict", arguments=arguments))
+            return NS(choices=[NS(message=NS(content=None, tool_calls=[call]), finish_reason="tool_calls")])
 
-    verdict = judges.score(judges.BY_NAME["answers-the-question"], "Q?", "I can't share that.", NS(messages=Model()))
+    verdict = judges.score(
+        judges.BY_NAME["answers-the-question"], "Q?", "I can't share that.", NS(chat=NS(completions=Model()))
+    )
 
     assert verdict == judges.Verdict("answers-the-question", False, "Declined.")
     prompt = calls[0]["messages"][0]["content"]
     assert "Q?" in prompt and "I can't share that." in prompt and "{{" not in prompt
-    assert calls[0]["model"] == "claude-haiku-5-5"
+    assert calls[0]["model"] == llm.MODEL
+    assert calls[0]["tool_choice"] == {"type": "function", "function": {"name": "record_verdict"}}
 
 
 # --- Installer -------------------------------------------------------------------
@@ -51,8 +56,8 @@ from kit.langfuse_api import LangfuseApi
 OWNED = NAMES[1:]
 
 
-def connection(provider="anthropic", adapter="anthropic"):
-    return {"id": f"c-{provider}", "provider": provider, "adapter": adapter}
+def connection(provider="openrouter", base_url="https://openrouter.ai/api/v1"):
+    return {"id": f"c-{provider}", "provider": provider, "adapter": "openai", "baseURL": base_url}
 
 
 def api_for(fake, sleeps=None):
@@ -85,7 +90,7 @@ def test_evaluator_body_pins_provider_and_model_and_maps_question_and_answer(fak
     evaluators.install(api_for(fake))
     for request in fake.calls("POST", "/api/public/v2/evaluators"):
         sent = body(request)
-        assert sent["modelConfig"] == {"provider": "anthropic", "model": "claude-haiku-5-5"}
+        assert sent["modelConfig"] == {"provider": "openrouter", "model": "deepseek/deepseek-v4.1-flash-1017"}
         assert sent["variableMapping"] == [
             {"variable": "question", "source": "input"},
             {"variable": "answer", "source": "output"},
@@ -143,16 +148,23 @@ def test_no_llm_connection_stops_before_creating_anything(fake):
     assert not [r for r in fake.requests if r.method == "POST"]
 
 
-def test_connection_named_anthropic_wins_over_others(fake):
-    fake.llm_connections[:] = [connection("openai", "openai"), connection("my-claude"), connection("anthropic")]
+def test_connection_named_openrouter_wins_over_others(fake):
+    fake.llm_connections[:] = [connection("openai", None), connection("my-router"), connection("openrouter")]
     evaluators.install(api_for(fake))
-    assert body(fake.calls("POST", "/api/public/v2/evaluators")[0])["modelConfig"]["provider"] == "anthropic"
+    assert body(fake.calls("POST", "/api/public/v2/evaluators")[0])["modelConfig"]["provider"] == "openrouter"
 
 
-def test_single_anthropic_adapter_connection_under_another_name_is_used(fake):
-    fake.llm_connections[:] = [connection("my-claude")]
+def test_single_openrouter_connection_under_another_name_is_used(fake):
+    fake.llm_connections[:] = [connection("openai", None), connection("my-router")]
     evaluators.install(api_for(fake))
-    assert body(fake.calls("POST", "/api/public/v2/evaluators")[0])["modelConfig"]["provider"] == "my-claude"
+    assert body(fake.calls("POST", "/api/public/v2/evaluators")[0])["modelConfig"]["provider"] == "my-router"
+
+
+def test_plain_openai_connection_is_not_used(fake):
+    fake.llm_connections[:] = [connection("openai", None)]
+    with pytest.raises(KitError) as err:
+        evaluators.install(api_for(fake))
+    assert err.value.code == "EVAL-NO-CONNECTION"
 
 
 def test_misnamed_evaluator_is_reported_beside_the_expected_name(fake, capsys):

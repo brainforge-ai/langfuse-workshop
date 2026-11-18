@@ -6,9 +6,9 @@ import base64
 import json
 import ssl
 
-import anthropic
 import httpx
-import httpx2  # the HTTP package the anthropic SDK is built on
+import httpx2  # the HTTP package the openai SDK is built on
+import openai
 import pytest
 
 from kit import config, state
@@ -29,8 +29,8 @@ TRACE_PK = "pk-lf-trace-1111aaaa"
 TRACE_SK = "sk-lf-trace-2222bbbb"
 AGENT_PK = "pk-lf-agent-3333cccc"
 AGENT_SK = "sk-lf-agent-4444dddd"
-LLM_KEY = "sk-ant-api03-workshop-5555eeee"
-RESERVE_KEY = "sk-ant-api03-reserve-6666ffff"
+LLM_KEY = "sk-or-v1-workshop-5555eeee"
+RESERVE_KEY = "sk-or-v1-reserve-6666ffff"
 
 GOOD = {
     config.LANGFUSE_PUBLIC_KEY: TRACE_PK,
@@ -83,21 +83,21 @@ def both_pairs_on(host, project=("proj-1", "langfuse-workshop")):
 
 
 def fake_llm(status=200, body=None, seen=None):
-    """A real anthropic client whose HTTP calls are answered locally."""
+    """A real openai client pointed at OpenRouter, whose HTTP calls are answered locally."""
 
     def handler(request: httpx2.Request) -> httpx2.Response:
         if status == 200:
             return httpx2.Response(
                 200,
                 json={
-                    "id": "msg_1",
-                    "type": "message",
-                    "role": "assistant",
-                    "model": "claude-haiku-5-5",
-                    "content": [{"type": "text", "text": "OK"}],
-                    "stop_reason": "end_turn",
-                    "stop_sequence": None,
-                    "usage": {"input_tokens": 1, "output_tokens": 1},
+                    "id": "gen-1",
+                    "object": "chat.completion",
+                    "created": 1,
+                    "model": "deepseek/deepseek-v4.1-flash-1017",
+                    "choices": [
+                        {"index": 0, "message": {"role": "assistant", "content": "OK"}, "finish_reason": "stop"}
+                    ],
+                    "usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2},
                 },
             )
         return httpx2.Response(status, json=body)
@@ -108,8 +108,11 @@ def fake_llm(status=200, body=None, seen=None):
                 seen.append(key)  # one entry per model call, with the key that made it
             return handler(request)
 
-        return anthropic.Anthropic(
-            api_key=key, max_retries=0, http_client=httpx2.Client(transport=httpx2.MockTransport(answer))
+        return openai.OpenAI(
+            api_key=key,
+            base_url="https://openrouter.ai/api/v1",
+            max_retries=0,
+            http_client=httpx2.Client(transport=httpx2.MockTransport(answer)),
         )
 
     return factory
@@ -228,7 +231,7 @@ def test_preset_base_url_is_used_as_is_and_no_other_host_is_tried(kit_home):
 
 def test_llm_check_answered_401_is_an_llm_key_error(kit_home):
     lf = FakeLangfuse(both_pairs_on(US))
-    llm = fake_llm(401, {"type": "error", "error": {"type": "authentication_error", "message": "invalid x-api-key"}})
+    llm = fake_llm(401, {"error": {"code": 401, "message": "No auth credentials found"}})
     with pytest.raises(KitError) as excinfo:
         setup_with(GOOD, services(lf, llm=llm))
     assert code_of(excinfo) == "LLM-KEY"
@@ -236,10 +239,28 @@ def test_llm_check_answered_401_is_an_llm_key_error(kit_home):
 
 def test_llm_check_unknown_model_is_an_llm_model_error(kit_home):
     lf = FakeLangfuse(both_pairs_on(US))
-    llm = fake_llm(404, {"type": "error", "error": {"type": "not_found_error", "message": "model: claude-haiku-5-5"}})
+    llm = fake_llm(404, {"error": {"code": 404, "message": "No endpoints found for deepseek/deepseek-v4.1-flash-1017."}})
     with pytest.raises(KitError) as excinfo:
         setup_with(GOOD, services(lf, llm=llm))
     assert code_of(excinfo) == "LLM-MODEL"
+
+
+@pytest.mark.parametrize(
+    ("status", "message", "code"),
+    [
+        (402, "Insufficient credits. Add more using https://openrouter.ai/credits", "LLM-KEY"),
+        (403, "Key limit exceeded (total limit).", "LLM-KEY"),
+        (403, "Model deepseek/deepseek-v4.1-flash-1017 is not in this key's guardrail allowlist.", "LLM-MODEL"),
+        (429, "Rate limit exceeded", "LLM-RATE"),
+        (503, "No available provider", "LLM-RATE"),
+    ],
+)
+def test_llm_check_maps_openrouter_errors_to_codes(kit_home, status, message, code):
+    lf = FakeLangfuse(both_pairs_on(US))
+    llm = fake_llm(status, {"error": {"code": status, "message": message}})
+    with pytest.raises(KitError) as excinfo:
+        setup_with(GOOD, services(lf, llm=llm))
+    assert code_of(excinfo) == code
 
 
 # --- Network failures are never credential failures -------------------------------------------

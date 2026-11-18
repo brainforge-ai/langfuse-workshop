@@ -6,7 +6,7 @@ def test_values_round_trip_through_env_file(kit_home):
     values = {
         config.LANGFUSE_PUBLIC_KEY: "pk-lf-1234",
         config.LANGFUSE_SECRET_KEY: "sk-lf-5678",
-        config.LLM_KEY: "sk-ant-api03-abcd",
+        config.LLM_KEY: "sk-or-v1-abcd",
     }
     config.write_env(values)
     assert config.read_env() == values
@@ -18,13 +18,13 @@ def test_env_file_with_byte_order_mark_reads_cleanly(kit_home):
 
 
 def test_pasted_quotes_and_whitespace_are_stored_clean(kit_home):
-    config.write_env({config.LLM_KEY: '  "sk-ant-xyz"  \n'})
-    assert (kit_home / ".env").read_text() == "WORKSHOP_LLM_KEY=sk-ant-xyz\n"
-    assert config.read_env()[config.LLM_KEY] == "sk-ant-xyz"
+    config.write_env({config.LLM_KEY: '  "sk-or-xyz"  \n'})
+    assert (kit_home / ".env").read_text() == "WORKSHOP_LLM_KEY=sk-or-xyz\n"
+    assert config.read_env()[config.LLM_KEY] == "sk-or-xyz"
 
 
 def test_mask_shows_only_prefix_and_last_four():
     assert mask("sk-lf-0123456789abcdef") == "sk-lf-...cdef"
-    assert mask("sk-ant-api03-secretsecret9876") == "sk-ant-...9876"
+    assert mask("sk-or-v1-secretsecret9876") == "sk-or-v1-...9876"
     assert mask("pk-lf-12") == "pk-lf-..."
     assert mask("") == "(empty)"

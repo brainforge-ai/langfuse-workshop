@@ -8,6 +8,7 @@ text, so a local verdict and a Langfuse verdict come from the same instructions.
 
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass
 from typing import Any
@@ -111,15 +112,18 @@ anything a customer could find odd or unprofessional.
 BY_NAME = {j.name: j for j in JUDGES}
 
 _VERDICT_TOOL = {
-    "name": "record_verdict",
-    "description": "Record whether the answer passes the check.",
-    "input_schema": {
-        "type": "object",
-        "properties": {
-            "reasoning": {"type": "string", "description": "One or two sentences explaining the verdict."},
-            "verdict": {"type": "boolean", "description": "true when the answer passes the check."},
+    "type": "function",
+    "function": {
+        "name": "record_verdict",
+        "description": "Record whether the answer passes the check.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "reasoning": {"type": "string", "description": "One or two sentences explaining the verdict."},
+                "verdict": {"type": "boolean", "description": "true when the answer passes the check."},
+            },
+            "required": ["reasoning", "verdict"],
         },
-        "required": ["reasoning", "verdict"],
     },
 }
 
@@ -147,9 +151,17 @@ def score(spec: JudgeSpec, question: str, answer: str, llm_client: Any) -> Verdi
         max_tokens=400,
         messages=[{"role": "user", "content": render(spec, question, answer)}],
         tools=[_VERDICT_TOOL],
-        tool_choice={"type": "tool", "name": "record_verdict"},
+        tool_choice={"type": "function", "function": {"name": "record_verdict"}},
     )
-    for block in response.content:
-        if block.type == "tool_use":
-            return Verdict(spec.name, bool(block.input["verdict"]), str(block.input.get("reasoning", "")))
+    for call in response.choices[0].message.tool_calls or []:
+        if call.function.name == "record_verdict":
+            verdict = json.loads(call.function.arguments)
+            return Verdict(spec.name, _as_bool(verdict["verdict"]), str(verdict.get("reasoning", "")))
     raise ValueError(f"judge {spec.name} returned no verdict")
+
+
+def _as_bool(value: Any) -> bool:
+    """Some models send the boolean as a string."""
+    if isinstance(value, str):
+        return value.strip().lower() == "true"
+    return bool(value)

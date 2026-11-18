@@ -13,18 +13,21 @@ MAX_ROWS_TO_MODEL = 50
 COUNT_LIMIT = 10_000
 
 RUN_SQL = {
-    "name": "run_sql",
-    "description": (
-        "Run one read-only DuckDB SQL query (SELECT or WITH) against the sales "
-        "database and get the result rows back as text. The database covers every "
-        "sale in scope, so a correct query always returns rows. If a query returns "
-        "no rows, it has a mistake, often a misspelled town or a wrong date format: "
-        "fix it and run it again."
-    ),
-    "input_schema": {
-        "type": "object",
-        "properties": {"query": {"type": "string", "description": "The SQL query to run."}},
-        "required": ["query"],
+    "type": "function",
+    "function": {
+        "name": "run_sql",
+        "description": (
+            "Run one read-only DuckDB SQL query (SELECT or WITH) against the sales "
+            "database and get the result rows back as text. The database covers every "
+            "sale in scope, so a correct query always returns rows. If a query returns "
+            "no rows, it has a mistake, often a misspelled town or a wrong date format: "
+            "fix it and run it again."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {"query": {"type": "string", "description": "The SQL query to run."}},
+            "required": ["query"],
+        },
     },
 }
 

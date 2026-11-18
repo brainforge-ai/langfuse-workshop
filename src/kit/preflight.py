@@ -26,7 +26,7 @@ from kit.langfuse_api import CLOUD_HOSTS, KeysRejected, LangfuseApi, Project
 
 PUBLIC_PREFIX = "pk-lf-"
 SECRET_PREFIX = "sk-lf-"
-LLM_PREFIX = "sk-ant-"
+LLM_PREFIX = llm.KEY_PREFIX
 
 # What each `.env` slot is called on screen.
 SLOT_NAMES = {
@@ -114,7 +114,7 @@ def check_llm_prefix(value: str) -> None:
     hint = " That is a Langfuse key." if value.startswith((SECRET_PREFIX, PUBLIC_PREFIX)) else ""
     raise KitError(
         LLM_NOT_AN_LLM_KEY,
-        f"The {slot(config.LLM_KEY)} is not an Anthropic key.{hint}",
+        f"The {slot(config.LLM_KEY)} is not an OpenRouter key.{hint}",
         f"Paste the workshop LLM key from the 1Password link. It starts with `{LLM_PREFIX}`.",
     )
 

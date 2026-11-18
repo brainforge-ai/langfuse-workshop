@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sys
 
-KEY_PREFIXES = ("pk-lf-", "sk-lf-", "sk-ant-")
+KEY_PREFIXES = ("pk-lf-", "sk-lf-", "sk-or-v1-", "sk-or-")
 
 
 def configure() -> None:

@@ -7,6 +7,7 @@ and tool calls are child observations.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -57,54 +58,59 @@ def run(
 
 
 def _loop(question: str, result: AgentResult, db: Database, llm_client: Any, system: str, langfuse: Langfuse) -> None:
-    messages: list[dict[str, Any]] = [{"role": "user", "content": question}]
+    messages: list[dict[str, Any]] = [{"role": "system", "content": system}, {"role": "user", "content": question}]
     while True:
-        response = _call_model(langfuse, llm_client, system, messages)
-        tool_uses = [b for b in response.content if b.type == "tool_use"]
-        text = "".join(b.text for b in response.content if b.type == "text").strip()
-        if not tool_uses:
-            result.answer = text or "(no answer)"
+        message = _call_model(langfuse, llm_client, messages)
+        calls = list(message.tool_calls or [])
+        if not calls:
+            result.answer = (message.content or "").strip() or "(no answer)"
             return
         if result.tool_steps >= MAX_TOOL_STEPS:
             result.answer = STEP_LIMIT_ANSWER
             return
-        messages.append({"role": "assistant", "content": [_block(b) for b in response.content]})
-        tool_results = []
-        for use in tool_uses:
-            query = str(use.input.get("query", ""))
+        messages.append(_assistant_message(message))
+        for call in calls:
+            query = _query(call)
             with langfuse.start_as_current_observation(name="run_sql", as_type="tool", input=query) as span:
                 sql_result = db.run(query)
                 span.update(output=sql_result.text)
             result.tool_steps += 1
             result.sql, result.row_count = query, sql_result.row_count
             result.queries.append(query)
-            tool_results.append({"type": "tool_result", "tool_use_id": use.id, "content": sql_result.text})
-        messages.append({"role": "user", "content": tool_results})
+            messages.append({"role": "tool", "tool_call_id": call.id, "content": sql_result.text})
 
 
-def _call_model(langfuse: Langfuse, llm_client: Any, system: str, messages: list[dict[str, Any]]) -> Any:
+def _call_model(langfuse: Langfuse, llm_client: Any, messages: list[dict[str, Any]]) -> Any:
     with langfuse.start_as_current_observation(
-        name="llm-call", as_type="generation", model=llm.MODEL, input=[{"role": "system", "content": system}, *messages]
+        name="llm-call", as_type="generation", model=llm.MODEL, input=list(messages)
     ) as generation:
-        response = llm.create(
-            llm_client,
-            system=system,
-            messages=messages,
-            tools=[RUN_SQL],
-            tool_choice={"type": "auto"},
-        )
+        response = llm.create(llm_client, messages=messages, tools=[RUN_SQL], tool_choice="auto")
+        message = response.choices[0].message
         usage = getattr(response, "usage", None)
         generation.update(
-            output=[_block(b) for b in response.content],
+            output=_assistant_message(message),
             usage_details={
-                "input": getattr(usage, "input_tokens", 0) or 0,
-                "output": getattr(usage, "output_tokens", 0) or 0,
+                "input": getattr(usage, "prompt_tokens", 0) or 0,
+                "output": getattr(usage, "completion_tokens", 0) or 0,
             },
         )
-    return response
+    return message
 
 
-def _block(block: Any) -> dict[str, Any]:
-    if block.type == "tool_use":
-        return {"type": "tool_use", "id": block.id, "name": block.name, "input": block.input}
-    return {"type": "text", "text": block.text}
+def _query(call: Any) -> str:
+    """The SQL from one tool call. Arguments that are not valid JSON give an empty query."""
+    try:
+        arguments = json.loads(call.function.arguments or "{}")
+    except (json.JSONDecodeError, TypeError):
+        return ""
+    return str(arguments.get("query", "")) if isinstance(arguments, dict) else ""
+
+
+def _assistant_message(message: Any) -> dict[str, Any]:
+    out: dict[str, Any] = {"role": "assistant", "content": message.content or ""}
+    if message.tool_calls:
+        out["tool_calls"] = [
+            {"id": c.id, "type": "function", "function": {"name": c.function.name, "arguments": c.function.arguments}}
+            for c in message.tool_calls
+        ]
+    return out

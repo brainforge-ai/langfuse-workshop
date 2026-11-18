@@ -47,20 +47,20 @@ def _pages(api: Any, path: str) -> list[dict[str, Any]]:
             return items
 
 
-def anthropic_connection(api: Any) -> dict[str, Any]:
-    """The connection evaluators run on: one named `anthropic`, else the only Anthropic one."""
+def llm_connection(api: Any) -> dict[str, Any]:
+    """The connection evaluators run on: one named `openrouter`, else the only one pointed at OpenRouter."""
     body = api.get("/api/public/llm-connections", limit=100).json()
     connections = body.get("data") or []
-    named = [c for c in connections if c.get("provider") == "anthropic"]
+    named = [c for c in connections if c.get("provider") == llm.CONNECTION_NAME]
     if named:
         return named[0]
-    by_adapter = [c for c in connections if c.get("adapter") == "anthropic"]
-    if len(by_adapter) == 1:
-        return by_adapter[0]
+    by_url = [c for c in connections if "openrouter.ai" in str(c.get("baseURL") or c.get("baseUrl") or "")]
+    if len(by_url) == 1:
+        return by_url[0]
     raise KitError(
         EVAL_NO_CONNECTION,
-        "Your Langfuse project has no Anthropic LLM connection yet, so nothing was installed.",
-        "In Langfuse open Settings > LLM Connections, add one with provider name `anthropic` and the workshop key, then run this again.",
+        "Your Langfuse project has no OpenRouter LLM connection yet, so nothing was installed.",
+        f"In Langfuse open Settings > LLM Connections and add the `{llm.CONNECTION_NAME}` connection from the README, then run this again.",
     )
 
 
@@ -90,7 +90,7 @@ def rule_body(name: str, evaluator_id: str) -> dict[str, Any]:
 
 
 def install(api: Any) -> InstallReport:
-    connection = anthropic_connection(api)
+    connection = llm_connection(api)
     evaluators = _pages(api, "/api/public/v2/evaluators")
     rules = _pages(api, "/api/public/v2/evaluation-rules")
     report = InstallReport()

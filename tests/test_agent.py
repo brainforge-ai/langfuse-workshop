@@ -131,7 +131,7 @@ def test_requests_use_the_kit_model_settings(db):
     model = ScriptedModel(text("Hello."))
     agent.run("Hi", langfuse=client, llm_client=model, customer="acme", db=db)
     request = model.calls[0]
-    assert request["model"] == llm.MODEL == "deepseek/deepseek-v4.1-flash-1017"
+    assert request["model"] == llm.MODEL
     assert request["max_tokens"] == 1024
     assert request["extra_body"] == {"reasoning": {"effort": "none"}}
     assert request["tool_choice"] == "auto"

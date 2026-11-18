@@ -12,7 +12,7 @@ import httpx2  # the HTTP package the openai SDK is built on
 import openai
 import pytest
 
-from kit import config, preflight, state
+from kit import config, llm, preflight, state
 from kit.errors import KitError
 from kit.langfuse_api import CLOUD_HOSTS, LangfuseApi
 from kit.preflight import Services
@@ -94,7 +94,7 @@ def fake_llm(status=200, body=None, seen=None):
                     "id": "gen-1",
                     "object": "chat.completion",
                     "created": 1,
-                    "model": "deepseek/deepseek-v4.1-flash-1017",
+                    "model": llm.MODEL,
                     "choices": [
                         {"index": 0, "message": {"role": "assistant", "content": "OK"}, "finish_reason": "stop"}
                     ],
@@ -240,9 +240,9 @@ def test_llm_check_answered_401_is_an_llm_key_error(kit_home):
 
 def test_llm_check_unknown_model_is_an_llm_model_error(kit_home):
     lf = FakeLangfuse(both_pairs_on(US))
-    llm = fake_llm(404, {"error": {"code": 404, "message": "No endpoints found for deepseek/deepseek-v4.1-flash-1017."}})
+    unknown = fake_llm(404, {"error": {"code": 404, "message": f"No endpoints found for {llm.MODEL}."}})
     with pytest.raises(KitError) as excinfo:
-        setup_with(GOOD, services(lf, llm=llm))
+        setup_with(GOOD, services(lf, llm=unknown))
     assert code_of(excinfo) == "LLM-MODEL"
 
 
@@ -251,7 +251,7 @@ def test_llm_check_unknown_model_is_an_llm_model_error(kit_home):
     [
         (402, "Insufficient credits. Add more using https://openrouter.ai/credits", "LLM-KEY"),
         (403, "Key limit exceeded (total limit).", "LLM-KEY"),
-        (403, "Model deepseek/deepseek-v4.1-flash-1017 is not in this key's guardrail allowlist.", "LLM-MODEL"),
+        (403, f"Model {llm.MODEL} is not in this key's guardrail allowlist.", "LLM-MODEL"),
         (429, "Rate limit exceeded", "LLM-RATE"),
         (503, "No available provider", "LLM-RATE"),
     ],

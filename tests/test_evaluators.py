@@ -107,7 +107,7 @@ def test_evaluator_body_pins_provider_and_model_and_maps_question_and_answer(fak
     evaluators.install(api_for(fake))
     for request in fake.calls("POST", "/api/public/v2/evaluators"):
         sent = body(request)
-        assert sent["modelConfig"] == {"provider": "openrouter", "model": "deepseek/deepseek-v4.1-flash-1017"}
+        assert sent["modelConfig"] == {"provider": "openrouter", "model": llm.MODEL}
         assert sent["variableMapping"] == [
             {"variable": "question", "source": "input"},
             {"variable": "answer", "source": "output"},

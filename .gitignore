@@ -1,0 +1,20 @@
+# Secrets and local state
+.env
+.env.*
+!.env.example
+.kit/
+
+# Presenter-only material, never published
+presenter/
+docs/plans/
+requirements.md
+
+# Python and tooling
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+.DS_Store

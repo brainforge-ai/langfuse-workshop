@@ -1,0 +1,30 @@
+from kit import config
+from kit.console import mask
+
+
+def test_values_round_trip_through_env_file(kit_home):
+    values = {
+        config.LANGFUSE_PUBLIC_KEY: "pk-lf-1234",
+        config.LANGFUSE_SECRET_KEY: "sk-lf-5678",
+        config.LLM_KEY: "sk-ant-api03-abcd",
+    }
+    config.write_env(values)
+    assert config.read_env() == values
+
+
+def test_env_file_with_byte_order_mark_reads_cleanly(kit_home):
+    (kit_home / ".env").write_bytes("﻿LANGFUSE_PUBLIC_KEY=pk-lf-1\r\n".encode("utf-8"))
+    assert config.read_env() == {"LANGFUSE_PUBLIC_KEY": "pk-lf-1"}
+
+
+def test_pasted_quotes_and_whitespace_are_stored_clean(kit_home):
+    config.write_env({config.LLM_KEY: '  "sk-ant-xyz"  \n'})
+    assert (kit_home / ".env").read_text() == "WORKSHOP_LLM_KEY=sk-ant-xyz\n"
+    assert config.read_env()[config.LLM_KEY] == "sk-ant-xyz"
+
+
+def test_mask_shows_only_prefix_and_last_four():
+    assert mask("sk-lf-0123456789abcdef") == "sk-lf-...cdef"
+    assert mask("sk-ant-api03-secretsecret9876") == "sk-ant-...9876"
+    assert mask("pk-lf-12") == "pk-lf-..."
+    assert mask("") == "(empty)"

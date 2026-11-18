@@ -1,0 +1,9 @@
+This repository bundles a slice of HM Land Registry Price Paid Data
+(src/kit/data/uk_price_paid.parquet).
+
+Contains HM Land Registry data (c) Crown copyright and database right 2026.
+This data is licensed under the Open Government Licence v3.0.
+https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
+
+The same dataset is published by ClickHouse as the `uk_price_paid` example
+dataset, and the column names here follow ClickHouse's version.

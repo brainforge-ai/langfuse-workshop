@@ -41,6 +41,14 @@ def state_dir() -> Path:
     return path
 
 
+# The values `.env.example` ships with. A `.env` copied from it still holds these until filled in.
+PLACEHOLDERS = frozenset({"pk-lf-...", "sk-lf-...", "sk-or-..."})
+
+
+def is_placeholder(value: str) -> bool:
+    return value in PLACEHOLDERS
+
+
 def clean(value: str) -> str:
     """Strip whitespace and one pair of surrounding quotes from a pasted value."""
     value = value.strip()

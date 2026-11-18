@@ -26,10 +26,12 @@ NEXT_COMMAND = "uv run kit tickets"
 
 
 def prompt_values(existing: dict[str, str], ask: Ask, ask_secret: Ask) -> dict[str, str]:
-    """Ask for each credential. Pressing Enter keeps the value already in `.env`."""
+    """Ask for each credential. Pressing Enter keeps the value already in `.env`, unless it is a placeholder."""
     values: dict[str, str] = {}
     for key, label, hidden in PROMPTS:
         current = existing.get(key, "")
+        if config.is_placeholder(current):
+            current = ""
         keep = f" [Enter keeps {console.mask(current)}]" if current else ""
         while True:
             value = config.clean((ask_secret if hidden else ask)(f"{label}{keep}: ")) or current
@@ -51,22 +53,27 @@ def run_setup(*, ask: Ask = input, ask_secret: Ask = getpass.getpass, services: 
     config.write_env(values)
 
     console.say("\nChecking the tracing key pair...")
-    host, project = preflight.find_project(values, services)
+    with console.spinner():
+        host, project = preflight.find_project(values, services)
     state.update(host=host, project_id=project.id, project_name=project.name)
     console.say(f"  OK: project `{project.name}` on {host}")
 
     console.say("Checking the agent key pair...")
-    preflight.check_agent_project(host, project, values, services)
+    with console.spinner():
+        preflight.check_agent_project(host, project, values, services)
     console.say("  OK: same project")
 
     console.say("Checking the workshop LLM key...")
-    preflight.check_llm_key(values[config.LLM_KEY], services)
+    with console.spinner():
+        preflight.check_llm_key(values[config.LLM_KEY], services)
     console.say("  OK: the model answered")
 
     console.say("Sending a hello trace (confirming it can take up to 30 seconds)...")
     trace_id = services.send_hello()
     link = tracing.trace_url(trace_id)
-    if preflight.confirm_hello(host, values, trace_id, services):
+    with console.spinner():
+        confirmed = preflight.confirm_hello(host, values, trace_id, services)
+    if confirmed:
         console.say(f"  OK: {link}")
     else:
         console.warn(
@@ -95,7 +102,8 @@ def load_history(
 ) -> str:
     """Load the recorded history once, after asking, and return the summary line about it."""
     api = services.api(host, values[config.LANGFUSE_PUBLIC_KEY], values[config.LANGFUSE_SECRET_KEY])
-    where = history.status(api)
+    with console.spinner():
+        where = history.status(api)
     if where == history.LOADED:
         return "History: already loaded by an earlier setup. Nothing was sent again."
     if where == history.OTHER_RUN:
@@ -107,7 +115,8 @@ def load_history(
     if answer.strip().lower() in ("n", "no"):
         return "History: not loaded. Run `uv run kit setup` again when you want it."
     console.say("Loading history...")
-    report = history.load(api, records(), progress=lambda line: console.say(f"  {line}"))
+    with console.spinner():
+        report = history.load(api, records(), progress=lambda line: console.say(f"  {line}"))
     if report.scores_unsent:
         return "History: traces loaded, but some scores did not go through. Run `uv run kit setup` again to finish."
     note = f" {len(report.batches_uncertain)} batch(es) timed out and were skipped." if report.batches_uncertain else ""

@@ -341,6 +341,44 @@ def test_rerun_with_full_env_keeps_every_value_on_enter_and_never_prints_a_full_
         assert secret not in shown
 
 
+def test_placeholders_copied_from_the_example_file_are_asked_for_and_replaced(kit_home, capsys):
+    lf = FakeLangfuse(both_pairs_on(US))
+    prompts = []
+    queue = [GOOD[k] for k in SLOT_ORDER]
+
+    def paste(prompt=""):
+        prompts.append(prompt)
+        return queue.pop(0)
+
+    config.write_env(
+        {
+            config.LANGFUSE_PUBLIC_KEY: "pk-lf-...",
+            config.LANGFUSE_SECRET_KEY: "sk-lf-...",
+            config.AGENT_PUBLIC_KEY: "pk-lf-...",
+            config.AGENT_SECRET_KEY: "sk-lf-...",
+            config.LLM_KEY: "sk-or-...",
+        }
+    )
+    assert run_setup(ask=paste, ask_secret=paste, services=services(lf)) == 0
+    assert len(prompts) == 5
+    assert not any("Enter keeps" in p for p in prompts)
+    assert config.read_env() == GOOD
+    assert "\r" not in capsys.readouterr().out  # not a terminal, so no spinner
+
+
+def test_placeholder_is_not_kept_on_enter(kit_home, capsys):
+    lf = FakeLangfuse(both_pairs_on(US))
+    queue = ["", GOOD[config.LANGFUSE_PUBLIC_KEY]] + [""] * 4
+
+    def enter_then_paste(prompt=""):
+        return queue.pop(0)
+
+    config.write_env(dict(GOOD, **{config.LANGFUSE_PUBLIC_KEY: "pk-lf-..."}))
+    assert run_setup(ask=enter_then_paste, ask_secret=enter_then_paste, services=services(lf)) == 0
+    assert "This one is needed" in capsys.readouterr().out
+    assert config.read_env() == GOOD
+
+
 def test_pasted_values_are_cleaned_before_saving(kit_home):
     lf = FakeLangfuse(both_pairs_on(US))
     values = dict(GOOD, **{config.LANGFUSE_SECRET_KEY: f'  "{TRACE_SK}"  '})

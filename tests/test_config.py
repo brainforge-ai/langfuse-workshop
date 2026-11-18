@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from kit import config
 from kit.console import mask
 
@@ -28,3 +30,11 @@ def test_mask_shows_only_prefix_and_last_four():
     assert mask("sk-or-v1-secretsecret9876") == "sk-or-v1-...9876"
     assert mask("pk-lf-12") == "pk-lf-..."
     assert mask("") == "(empty)"
+
+
+def test_example_file_values_are_placeholders_and_real_keys_are_not():
+    example = config.read_env(Path(__file__).parent.parent / ".env.example")
+    assert example  # the example file still lists the five keys
+    assert all(config.is_placeholder(value) for value in example.values())
+    for real in ("pk-lf-1234", "sk-lf-0123456789abcdef", "sk-or-v1-abcd", ""):
+        assert not config.is_placeholder(real)

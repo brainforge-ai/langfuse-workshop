@@ -89,7 +89,7 @@ Reply true when the answer passes this check and false when it fails.
 2. **Map variables to data.** Langfuse lists the two variables from the prompt. Map `{{question}}` to **Input** and `{{answer}}` to **Output**.
 3. **Name evaluator.** Name: `answers-the-question`. Type it exactly, because the score uses the same name.
 
-**Before you click Create evaluator,** look at the **Test with sample observations** panel on the right. The evaluator will run on whatever that panel's filter matches. It starts with `isRootObservation: true`. Add a second filter, **Name** is `sql-agent`, so it judges only the agent's answers.
+**Before you click Create evaluator,** look at the **Test with sample observations** panel on the right. The evaluator will run on whatever that panel's filter matches. It starts with `isRootObservation: true`. Add a second filter, **Name**, and pick `sql-agent` from its dropdown, so it judges only the agent's answers.
 
 Click **Create evaluator**. In the **Evaluator saved** dialog:
 

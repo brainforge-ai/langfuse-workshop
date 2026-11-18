@@ -48,6 +48,8 @@ KEYS_PAGE = "Settings > API Keys in your langfuse-workshop project"
 
 # Ingestion is not instant; wait this long before the one read that confirms the hello trace.
 HELLO_CONFIRM_DELAY = 3.0
+# Langfuse can take about 20 seconds to make a new trace readable, so check for up to 30.
+HELLO_CONFIRM_TRIES = 10
 HELLO_NAME = "kit-hello"
 
 
@@ -176,10 +178,13 @@ def check_llm_key(key: str, services: Services) -> None:
 
 
 def confirm_hello(host: str, values: dict[str, str], trace_id: str, services: Services) -> bool:
-    """One read by trace ID. Any failure here means only that it was not confirmed."""
-    services.sleep(HELLO_CONFIRM_DELAY)
+    """Read the trace by ID a few times while Langfuse catches up. A failure means only that it was not confirmed."""
     api = services.api(host, values[config.LANGFUSE_PUBLIC_KEY], values[config.LANGFUSE_SECRET_KEY])
-    try:
-        return api.trace_has_observations(trace_id)
-    except (KitError, KeysRejected, httpx.HTTPError):
-        return False
+    for _ in range(HELLO_CONFIRM_TRIES):
+        services.sleep(HELLO_CONFIRM_DELAY)
+        try:
+            if api.trace_has_observations(trace_id):
+                return True
+        except (KitError, KeysRejected, httpx.HTTPError):
+            pass
+    return False

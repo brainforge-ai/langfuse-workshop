@@ -63,7 +63,7 @@ def run_setup(*, ask: Ask = input, ask_secret: Ask = getpass.getpass, services: 
     preflight.check_llm_key(values[config.LLM_KEY], services)
     console.say("  OK: the model answered")
 
-    console.say("Sending a hello trace...")
+    console.say("Sending a hello trace (confirming it can take up to 30 seconds)...")
     trace_id = services.send_hello()
     link = tracing.trace_url(trace_id)
     if preflight.confirm_hello(host, values, trace_id, services):

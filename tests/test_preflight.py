@@ -388,6 +388,24 @@ def test_unconfirmed_hello_trace_warns_with_a_link_and_setup_continues(kit_home,
     assert "uv run kit tickets" in out.out
 
 
+def test_hello_trace_that_shows_up_after_the_read_lag_is_confirmed_without_a_warning(kit_home, capsys):
+    lf = FakeLangfuse(both_pairs_on(US))
+
+    class Clock(list):
+        def append(self, seconds):
+            super().append(seconds)
+            if len(self) == 5:  # Langfuse makes the trace readable a few checks in
+                lf.traces.add("trace-hello-1")
+
+    sleeps = Clock()
+    svc = services(lf, sleeps=sleeps)
+    lf.traces.clear()
+    assert setup_with(GOOD, svc) == 0
+    out = capsys.readouterr()
+    assert "LF-TRACE-UNCONFIRMED" not in out.err
+    assert sum(sleeps) <= 30
+
+
 def test_hello_trace_goes_through_the_sdk_as_one_root_observation(kit_home):
     from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 

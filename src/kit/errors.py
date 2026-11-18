@@ -50,6 +50,25 @@ class KitError(Exception):
         self.fix = fix
 
 
+def connection_error(exc: BaseException) -> KitError:
+    """Tell a certificate problem apart from no connection at all."""
+    seen: BaseException | None = exc
+    while seen is not None:
+        text = f"{type(seen).__name__} {seen}".lower()
+        if "ssl" in text or "certificate" in text:
+            return KitError(
+                NET_TLS,
+                "A secure connection could not be made. Something on this network is intercepting it.",
+                "Try a different network, such as a phone hotspot, then run the command again.",
+            )
+        seen = seen.__cause__ or seen.__context__
+    return KitError(
+        NET_OFFLINE,
+        "The kit could not reach the internet.",
+        "Check your Wi-Fi, then run the command again.",
+    )
+
+
 def not_set_up() -> KitError:
     return KitError(
         KIT_NOT_SET_UP,

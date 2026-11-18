@@ -61,12 +61,12 @@ An evaluator uses an LLM as a judge to score every new trace. You will build the
 - API key: the workshop LLM key
 - Under **Advanced Settings**, set the base URL to `https://openrouter.ai/api/v1`, turn off the default models, and add `anthropic/claude-haiku-5.5` as a custom model.
 
-**Create the evaluator.** Open **Evaluators**, create a new LLM-as-a-judge evaluator and set:
+**Create the evaluator.** Open **Evaluators** and create a new evaluator. The form has three numbered parts.
 
-- Name: `answers-the-question`. Type it exactly, because the score uses the same name.
-- Model: `anthropic/claude-haiku-5.5`, from the `openrouter` connection.
-- Score type: Boolean.
-- Prompt: copy the whole block below.
+1. **Define evaluation method.**
+   - Use: **LLM-as-a-judge**, with `openrouter / anthropic/claude-haiku-5.5` from the model chooser next to it.
+   - In the message box, replace the default text ("Evaluate the quality of the response...") with the whole block below.
+   - Under the box, set **Return a** to **boolean** score.
 
 ```text
 You are reviewing one answer from Price Insight, an assistant that answers questions about house sales in England and Wales from HM Land Registry price paid data. The assistant writes SQL against a table of individual sales (price in whole pounds, date, outward postcode, property type, new-build flag, tenure, post town, local authority district, county). The data runs from January 2023 to the end of September 2026.
@@ -86,12 +86,17 @@ Check: does the answer directly answer the question that was asked?
 Reply true when the answer passes this check and false when it fails.
 ```
 
-**Point it at new traces.** Set it to run on observations, add a filter where the observation name is `sql-agent`, and map the variables:
+2. **Map variables to data.** Langfuse lists the two variables from the prompt. Map `{{question}}` to **Input** and `{{answer}}` to **Output**.
+3. **Name evaluator.** Name: `answers-the-question`. Type it exactly, because the score uses the same name.
 
-- `question` to the observation **input**
-- `answer` to the observation **output**
+**Before you click Create evaluator,** look at the **Test with sample observations** panel on the right. The evaluator will run on whatever that panel's filter matches. It starts with `isRootObservation: true`. Add a second filter, **Name** is `sql-agent`, so it judges only the agent's answers.
 
-Leave **Also run on past observations** off. The history already carries scores, and judging it again would spend the shared key.
+Click **Create evaluator**. In the **Evaluator saved** dialog:
+
+- Keep **Reuse the configured filters** selected. It shows the filters from the panel.
+- Leave **Run evaluator on past observations matching these filters** off. The history already carries scores, and judging it again would spend the shared key.
+- Leave **Sampling** at 100%.
+- Click **Execute**, not **Skip execution**.
 
 Now send three tickets again, for example `uv run kit ticket 2`, `uv run kit ticket 5` and `uv run kit ticket 1`. After a minute or two the new traces show an `answers-the-question` score. The history traces keep only the scores they came with.
 

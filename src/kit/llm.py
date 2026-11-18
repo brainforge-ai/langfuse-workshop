@@ -17,7 +17,8 @@ KEY_PREFIX = "sk-or-"
 # The name attendees give the LLM connection in Langfuse.
 CONNECTION_NAME = "openrouter"
 
-# The model reasons by default. The kit turns that off so answers come back fast and cheap.
+# The model reasons by default. The agent and the key check turn that off so answers come back fast.
+# Judges keep the default, the same way Langfuse-hosted judges run, so local scores match hosted ones.
 NO_REASONING = {"reasoning": {"effort": "none"}}
 
 KEY_SWITCH_FIX = (
@@ -45,11 +46,15 @@ def client(api_key: str | None = None) -> openai.OpenAI:
     )
 
 
-def create(llm: Any, **request: Any) -> Any:
-    """Send one chat request with the kit's fixed settings and translate failures."""
+def create(llm: Any, *, reasoning: bool = False, **request: Any) -> Any:
+    """Send one chat request with the kit's fixed settings and translate failures.
+
+    `reasoning=True` leaves the model's default reasoning on instead of turning it off.
+    """
     request.setdefault("model", MODEL)
     request.setdefault("max_tokens", MAX_OUTPUT_TOKENS)
-    request["extra_body"] = {**NO_REASONING, **(request.get("extra_body") or {})}
+    if not reasoning:
+        request["extra_body"] = {**NO_REASONING, **(request.get("extra_body") or {})}
     try:
         response = llm.chat.completions.create(**request)
     except openai.APIStatusError as exc:

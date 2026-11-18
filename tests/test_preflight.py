@@ -5,13 +5,14 @@ from __future__ import annotations
 import base64
 import json
 import ssl
+from types import SimpleNamespace as NS
 
 import httpx
 import httpx2  # the HTTP package the openai SDK is built on
 import openai
 import pytest
 
-from kit import config, state
+from kit import config, preflight, state
 from kit.errors import KitError
 from kit.langfuse_api import CLOUD_HOSTS, LangfuseApi
 from kit.preflight import Services
@@ -261,6 +262,19 @@ def test_llm_check_maps_openrouter_errors_to_codes(kit_home, status, message, co
     with pytest.raises(KitError) as excinfo:
         setup_with(GOOD, services(lf, llm=llm))
     assert code_of(excinfo) == code
+
+
+def test_llm_check_turns_reasoning_off():
+    requests = []
+
+    class Model:
+        def create(self, **request):
+            requests.append(request)
+            return NS(choices=[NS(message=NS(content="OK", tool_calls=None), finish_reason="stop")])
+
+    preflight.check_llm_key("sk-or-v1-test", NS(llm_client=lambda key: NS(chat=NS(completions=Model()))))
+
+    assert requests[0]["extra_body"] == {"reasoning": {"effort": "none"}}
 
 
 # --- Network failures are never credential failures -------------------------------------------

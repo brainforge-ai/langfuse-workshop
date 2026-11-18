@@ -42,6 +42,23 @@ def test_local_runner_returns_the_models_boolean_verdict():
     assert calls[0]["tool_choice"] == {"type": "function", "function": {"name": "record_verdict"}}
 
 
+def test_local_judges_keep_the_models_default_reasoning_with_room_for_it():
+    calls = []
+
+    class Model:
+        def create(self, **request):
+            calls.append(request)
+            arguments = json.dumps({"reasoning": "Fine.", "verdict": True})
+            call = NS(id="v1", type="function", function=NS(name="record_verdict", arguments=arguments))
+            return NS(choices=[NS(message=NS(content=None, tool_calls=[call]), finish_reason="tool_calls")])
+
+    judges.score(judges.BY_NAME["professional-tone"], "Q?", "A.", NS(chat=NS(completions=Model())))
+
+    assert "reasoning" not in (calls[0].get("extra_body") or {})
+    # Reasoning tokens count against max_tokens, so a judge needs far more than the verdict itself.
+    assert calls[0]["max_tokens"] >= 4096
+
+
 # --- Installer -------------------------------------------------------------------
 
 import base64

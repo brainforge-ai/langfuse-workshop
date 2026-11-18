@@ -144,11 +144,16 @@ def variables(text: str) -> set[str]:
     return set(re.findall(r"\{\{(\w+)\}\}", text))
 
 
+# Reasoning tokens count against this budget, so it leaves room for the reasoning and the verdict.
+JUDGE_MAX_OUTPUT_TOKENS = 4096
+
+
 def score(spec: JudgeSpec, question: str, answer: str, llm_client: Any) -> Verdict:
     """Run one judge locally through the workshop model and return its verdict."""
     response = llm.create(
         llm_client,
-        max_tokens=400,
+        reasoning=True,
+        max_tokens=JUDGE_MAX_OUTPUT_TOKENS,
         messages=[{"role": "user", "content": render(spec, question, answer)}],
         tools=[_VERDICT_TOOL],
         tool_choice={"type": "function", "function": {"name": "record_verdict"}},

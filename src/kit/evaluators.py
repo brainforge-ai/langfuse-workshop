@@ -47,16 +47,24 @@ def _pages(api: Any, path: str) -> list[dict[str, Any]]:
             return items
 
 
-def llm_connection(api: Any) -> dict[str, Any]:
-    """The connection evaluators run on: one named `openrouter`, else the only one pointed at OpenRouter."""
+def llm_provider(api: Any, evaluators: list[dict[str, Any]]) -> str:
+    """The connection evaluators run on: one named `openrouter`, else the only one pointed at OpenRouter.
+
+    Langfuse's API can list no connections even when one exists, so if none is found this
+    falls back to the connection the attendee's own `answers-the-question` evaluator runs on.
+    """
     body = api.get("/api/public/llm-connections", limit=100).json()
     connections = body.get("data") or []
     named = [c for c in connections if c.get("provider") == llm.CONNECTION_NAME]
     if named:
-        return named[0]
+        return named[0]["provider"]
     by_url = [c for c in connections if "openrouter.ai" in str(c.get("baseURL") or c.get("baseUrl") or "")]
     if len(by_url) == 1:
-        return by_url[0]
+        return by_url[0]["provider"]
+    hand_built = next((e for e in evaluators if e.get("name") == HAND_BUILT), None)
+    provider = ((hand_built or {}).get("modelConfig") or {}).get("provider")
+    if provider:
+        return provider
     raise KitError(
         EVAL_NO_CONNECTION,
         "Your Langfuse project has no OpenRouter LLM connection yet, so nothing was installed.",
@@ -90,8 +98,8 @@ def rule_body(name: str, evaluator_id: str) -> dict[str, Any]:
 
 
 def install(api: Any) -> InstallReport:
-    connection = llm_connection(api)
     evaluators = _pages(api, "/api/public/v2/evaluators")
+    provider = llm_provider(api, evaluators)
     rules = _pages(api, "/api/public/v2/evaluation-rules")
     report = InstallReport()
 
@@ -107,7 +115,7 @@ def install(api: Any) -> InstallReport:
             report.name_taken.append(spec.name)
             continue
         if ours is None:
-            response = api.post("/api/public/v2/evaluators", json=evaluator_body(spec, connection["provider"]))
+            response = api.post("/api/public/v2/evaluators", json=evaluator_body(spec, provider))
             response.raise_for_status()
             ours = response.json()
             report.created.append(spec.name)

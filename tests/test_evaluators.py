@@ -184,6 +184,15 @@ def test_plain_openai_connection_is_not_used(fake):
     assert err.value.code == "EVAL-NO-CONNECTION"
 
 
+def test_unlisted_connection_falls_back_to_the_hand_built_evaluators_provider(fake):
+    # Langfuse can list no connections even though the attendee's evaluator runs on one.
+    fake.llm_connections.clear()
+    fake.evaluators.append({"id": "mine", "name": "answers-the-question", "modelConfig": {"provider": "openrouter"}})
+    report = evaluators.install(api_for(fake))
+    assert len(report.created) == 4
+    assert {body(r)["modelConfig"]["provider"] for r in fake.calls("POST", "/api/public/v2/evaluators")} == {"openrouter"}
+
+
 def test_misnamed_evaluator_is_reported_beside_the_expected_name(fake, capsys):
     fake.evaluators.append({"id": "typo", "name": "answer-the-question", "description": ""})
     evaluators.print_report(evaluators.install(api_for(fake)))

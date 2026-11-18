@@ -7,7 +7,8 @@ import datetime as dt
 import traceback
 from collections.abc import Callable
 
-from kit import config, console
+from kit import config, console, llm, tickets, tracing
+from kit.agent import agent
 from kit.errors import KIT_UNEXPECTED, KitError
 
 Handler = Callable[[argparse.Namespace], int | None]
@@ -55,8 +56,61 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-# Each entry adds one subcommand and sets its handler with set_defaults(handler=...).
-_COMMANDS: list[Callable[[argparse._SubParsersAction], None]] = []
+def _ask(args: argparse.Namespace) -> int:
+    _send([(args.question, ASK_CUSTOMER, None)])
+    return 0
+
+
+def _ticket(args: argparse.Namespace) -> int:
+    ticket = tickets.get(args.number)
+    if ticket is None:
+        console.say(f"There is no ticket {args.number}. Tickets run from 1 to {len(tickets.load())}.")
+        return 1
+    _send([(ticket.question, ticket.customer, ticket)])
+    return 0
+
+
+def _tickets(_: argparse.Namespace) -> int:
+    _send([(t.question, t.customer, t) for t in tickets.load()])
+    return 0
+
+
+def _send(jobs: list[tuple[str, str, tickets.Ticket | None]]) -> None:
+    """Run each question through the agent, printing the answer and its trace link."""
+    langfuse = tracing.client()
+    llm_client = llm.client()
+    try:
+        for question, customer, ticket in jobs:
+            console.say()
+            if ticket is not None:
+                console.say(f"--- Ticket {ticket.id} from {ticket.customer}")
+                console.say(ticket.complaint)
+            console.say(f"Q: {question}")
+            result = agent.run(question, langfuse=langfuse, llm_client=llm_client, customer=customer)
+            console.say(f"A: {result.answer}")
+            console.say(f"Trace: {tracing.trace_url(result.trace_id)}")
+    finally:
+        langfuse.flush()
+
+
+ASK_CUSTOMER = "workshop-attendee"
+
+
+def _register_agent_commands(sub: argparse._SubParsersAction) -> None:
+    ask = sub.add_parser("ask", help="Ask the agent your own question.")
+    ask.add_argument("question", help="The question, in quotes.")
+    ask.set_defaults(handler=_ask)
+
+    one = sub.add_parser("ticket", help="Send one customer ticket, for example `kit ticket 3`.")
+    one.add_argument("number", type=int, help="Ticket number, 1 to 10.")
+    one.set_defaults(handler=_ticket)
+
+    every = sub.add_parser("tickets", help="Send all ten customer tickets.")
+    every.set_defaults(handler=_tickets)
+
+
+# Each entry adds subcommands and sets their handler with set_defaults(handler=...).
+_COMMANDS: list[Callable[[argparse._SubParsersAction], None]] = [_register_agent_commands]
 
 
 def main(argv: list[str] | None = None) -> int:

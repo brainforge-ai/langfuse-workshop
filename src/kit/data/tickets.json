@@ -1,0 +1,72 @@
+[
+  {
+    "id": "T01",
+    "customer": "harbour-lettings",
+    "complaint": "Harbour Lettings is sizing its Manchester expansion and expects roughly 16,000 sales in 2025 based on last year's run rate.",
+    "question": "How many property sales were recorded in Manchester between 1 January 2025 and 31 December 2025?",
+    "expected": "16,085 sales."
+  },
+  {
+    "id": "T02",
+    "customer": "northgate-mortgages",
+    "complaint": "Northgate Mortgages needs a comparable for a Bristol valuation and expects the top detached-house price of 2025, which is public record.",
+    "question": "What was the highest price paid for a detached house in Bristol between 1 January 2025 and 31 December 2025?",
+    "expected": "£3,000,000."
+  },
+  {
+    "id": "T03",
+    "customer": "pennine-surveyors",
+    "complaint": "Pennine Surveyors uses the typical detached price in Sheffield for its fee schedule and expects a figure around £350,000.",
+    "question": "What was the median price of a detached house in Sheffield between 1 January 2024 and 31 December 2024?",
+    "expected": "£349,500."
+  },
+  {
+    "id": "T04",
+    "customer": "mersey-homes",
+    "complaint": "Mersey Homes tracks new-build flat supply in Liverpool and expects a few hundred sales for 2025.",
+    "question": "How many newly built flats were sold in Liverpool between 1 January 2025 and 31 December 2025?",
+    "expected": "384 sales."
+  },
+  {
+    "id": "T05",
+    "customer": "cityline-capital",
+    "complaint": "Cityline Capital wants a list of any ultra-prime Manchester deals in 2025 for a client report.",
+    "question": "Which sales in Manchester between 1 January 2025 and 31 December 2025 were for more than £50,000,000? List them.",
+    "expected": "There were no sales over £50,000,000 in Manchester in 2025."
+  },
+  {
+    "id": "T06",
+    "customer": "trent-valley-estates",
+    "complaint": "Trent Valley Estates prices terraced stock in Nottingham and expects an average just under £190,000 for 2025.",
+    "question": "What was the average price of a terraced house in Nottingham between 1 January 2025 and 31 December 2025?",
+    "expected": "£188,011."
+  },
+  {
+    "id": "T07",
+    "customer": "aire-property-data",
+    "complaint": "Aire Property Data expects the typical Leeds flat price for 2025 to be about £150,000, in line with their own records.",
+    "question": "What was the median price of a flat in Leeds between 1 January 2025 and 31 December 2025?",
+    "expected": "£150,000."
+  },
+  {
+    "id": "T08",
+    "customer": "soar-housing",
+    "complaint": "Soar Housing is planning a semi-detached campaign in Leicester and expects about 500 sales in the first quarter of 2026.",
+    "question": "How many semi-detached houses were sold in Leicester between 1 January 2026 and 31 March 2026?",
+    "expected": "532 sales."
+  },
+  {
+    "id": "T09",
+    "customer": "midlands-mortgage-club",
+    "complaint": "Midlands Mortgage Club expects the average Birmingham sale price for March 2026 to be near £270,000.",
+    "question": "What was the average sale price in Birmingham in March 2026?",
+    "expected": "£270,829."
+  },
+  {
+    "id": "T10",
+    "customer": "broadland-agents",
+    "complaint": "Broadland Agents expects about 500 detached sales in Norwich in the second quarter of 2025.",
+    "question": "How many detached houses were sold in Norwich between 1 April 2025 and 30 June 2025?",
+    "expected": "503 sales."
+  }
+]

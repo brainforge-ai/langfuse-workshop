@@ -7,9 +7,10 @@ import datetime as dt
 import traceback
 from collections.abc import Callable
 
-from kit import config, console, llm, tickets, tracing
+from kit import config, console, evaluators, llm, setup_flow, state, tickets, tracing
 from kit.agent import agent
-from kit.errors import KIT_UNEXPECTED, KitError
+from kit.errors import KIT_UNEXPECTED, LF_KEYPAIR, KitError, not_set_up
+from kit.langfuse_api import KeysRejected, LangfuseApi
 
 Handler = Callable[[argparse.Namespace], int | None]
 
@@ -109,8 +110,37 @@ def _register_agent_commands(sub: argparse._SubParsersAction) -> None:
     every.set_defaults(handler=_tickets)
 
 
+def _install_evaluators(_: argparse.Namespace) -> int:
+    values = config.read_env()
+    public, secret = values.get(config.AGENT_PUBLIC_KEY), values.get(config.AGENT_SECRET_KEY)
+    if not public or not secret:
+        raise not_set_up()
+    api = LangfuseApi(tracing.host(), public, secret)
+    console.say(f"Installing workshop evaluators into project `{state.load().get('project_name', '?')}`...")
+    try:
+        report = evaluators.install(api)
+    except KeysRejected as exc:
+        raise KitError(
+            LF_KEYPAIR,
+            "Langfuse rejected the agent key pair (LANGFUSE_AGENT_PUBLIC_KEY and LANGFUSE_AGENT_SECRET_KEY).",
+            "Run `uv run kit setup` and paste a working agent key pair.",
+        ) from exc
+    evaluators.print_report(report)
+    return 1 if report.name_taken else 0
+
+
+def _register_evaluator_command(sub: argparse._SubParsersAction) -> None:
+    sub.add_parser(
+        "install-evaluators", help="Install the four workshop evaluators into your Langfuse project."
+    ).set_defaults(handler=_install_evaluators)
+
+
 # Each entry adds subcommands and sets their handler with set_defaults(handler=...).
-_COMMANDS: list[Callable[[argparse._SubParsersAction], None]] = [_register_agent_commands]
+_COMMANDS: list[Callable[[argparse._SubParsersAction], None]] = [
+    setup_flow.register,
+    _register_agent_commands,
+    _register_evaluator_command,
+]
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -7,6 +7,7 @@
 # Presenter-only material, never published
 presenter/
 docs/plans/
+docs/ideation/
 requirements.md
 
 # Python and tooling
@@ -19,6 +20,11 @@ build/
 dist/
 .DS_Store
 
-# Per-editor MCP settings can hold keys
+# Per-user agent settings can hold keys
 .cursor/
 .codex/
+.mcp.json
+.claude/settings.local.json
+
+# Logs
+*.log

@@ -226,6 +226,22 @@ The tickets were the problems customers noticed. The scored history holds one no
 9. Ask your agent: "Use the Langfuse MCP server to find the other reasons the agent's answers fail, and show me the cause of each in this repo." It reports each cause with a failing trace before it changes anything.
 10. Pick one cause, let the agent fix it, and prove the fix with `uv run kit ask "<the same question>"`. The new trace should pass its evaluator.
 
+## 6. Open a pull request to get graded
+
+Fix as many causes as you can, then open a pull request against this repo. A grader comments on it within a minute with how many of the problems you fixed, plus hints for the ones still open. Each push updates the comment. Your `.env` is never committed: git ignores it.
+
+With the [GitHub CLI](https://cli.github.com/):
+
+```
+git switch -c my-fixes
+git commit -am "Fix the agent's answers"
+gh repo fork --remote --remote-name fork
+git push -u fork my-fixes
+gh pr create --repo brainforge-ai/langfuse-workshop --fill
+```
+
+Without it: click **Fork** on the repo page on GitHub, then run `git switch -c my-fixes`, `git commit -am "Fix the agent's answers"`, `git remote add fork https://github.com/<your-username>/langfuse-workshop.git` and `git push -u fork my-fixes`. Open your fork on GitHub and click **Compare & pull request**.
+
 ## If the LLM key stops working
 
 When the shared key hits its cap, the kit prints `LLM-KEY` with two steps. Do both:

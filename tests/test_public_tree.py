@@ -1,5 +1,6 @@
 """The public repo must not carry presenter-only material, in files or in history."""
 
+import os
 import re
 import shutil
 import subprocess
@@ -22,6 +23,10 @@ MARKERS = tuple(
         ("reserve ", "bug"),
     )
 )
+# Pull requests from attendees may mention what they found; the scan guards main only.
+ON_PULL_REQUEST = pytest.mark.skipif(
+    bool(os.environ.get("GITHUB_BASE_REF")), reason="pull request checks guard main only"
+)
 CATALOG_ID = re.compile(r"\b(" + "B" + r"[1-4]|" + "H" + r"[1-3]|" + "E" + r"E)\b")
 
 
@@ -42,6 +47,7 @@ def test_no_private_path_is_tracked():
     assert leaked == []
 
 
+@ON_PULL_REQUEST
 def test_no_tracked_text_file_carries_a_marker():
     this_file = Path(__file__).resolve().relative_to(ROOT).as_posix()
     hits = []
@@ -56,6 +62,7 @@ def test_no_tracked_text_file_carries_a_marker():
     assert hits == []
 
 
+@ON_PULL_REQUEST
 def test_no_commit_message_carries_a_marker_or_catalog_id():
     log = _git("log", "--format=%H%n%B%n----")
     hits = []

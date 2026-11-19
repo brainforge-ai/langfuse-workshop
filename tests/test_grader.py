@@ -1,8 +1,19 @@
-"""The pull request grader in .github/scripts/grade_pr.py."""
+"""The pull request grader in .github/scripts/grade_pr.py.
+
+These tests read the starting code, so they guard main only: on an attendee's pull
+request the lines they look for are already fixed.
+"""
 
 import importlib.util
+import os
 import sys
 from pathlib import Path
+
+import pytest
+
+pytestmark = pytest.mark.skipif(
+    bool(os.environ.get("GITHUB_BASE_REF")), reason="pull request checks guard main only"
+)
 
 ROOT = Path(__file__).resolve().parent.parent
 SPEC = importlib.util.spec_from_file_location("grade_pr", ROOT / ".github/scripts/grade_pr.py")

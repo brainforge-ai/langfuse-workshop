@@ -67,8 +67,8 @@ def llm_provider(api: Any, evaluators: list[dict[str, Any]]) -> str:
         return provider
     raise KitError(
         EVAL_NO_CONNECTION,
-        "Your Langfuse project has no OpenRouter LLM connection yet, so nothing was installed.",
-        f"In Langfuse open Settings > LLM Connections and add the `{llm.CONNECTION_NAME}` connection from the README, then run this again.",
+        "The installer could not find your OpenRouter LLM connection, so nothing was installed.",
+        f"Build the evaluator `{HAND_BUILT}` from README step 3 first, on the `{llm.CONNECTION_NAME}` connection. The installer reuses its connection. Then run this again.",
     )
 
 

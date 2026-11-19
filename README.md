@@ -24,7 +24,7 @@ The agent answers questions over a bundled slice of the UK house-price dataset t
    cd langfuse-workshop
    ```
 
-2. In Langfuse, create a new project named `langfuse-workshop`. Use a new project even if you already have one. Leave the screen that comes up open: it shows the project's first API key, which the app uses for tracing.
+2. In Langfuse, create a new project named `langfuse-workshop`. Use a new project even if you already have one. Leave the screen that comes up open: it shows the project's first API key, which the app uses for tracing. If no key appears, open **Settings > API Keys** and create one.
 3. Start setup:
 
    ```
@@ -141,7 +141,7 @@ The tickets were the problems customers noticed. The scored history holds one no
 
    <details><summary>Hint</summary>
 
-   False results jump about five days ago and stay high.
+   False results jump four to five days ago and stay high.
 
    </details>
 
@@ -155,7 +155,7 @@ The tickets were the problems customers noticed. The scored history holds one no
 
    <details><summary>Hint</summary>
 
-   Nearly every failing trace is version `1.3.0`, from the London customers `thames-estates` and `capital-homes-research`.
+   Most failing traces are version `1.3.0`, and most of those come from the London customers `thames-estates` and `capital-homes-research`. The rest are other causes you will meet later.
 
    </details>
 
@@ -173,6 +173,8 @@ The tickets were the problems customers noticed. The scored history holds one no
    version:1.2.0 userId:thames-estates
    ```
 
+   If the search takes only one filter, search `userId:thames-estates` and read the **Version** column instead.
+
    <details><summary>Hint</summary>
 
    Release 1.2.0 filters on `town = 'LONDON'`, which counts all of London.
@@ -187,7 +189,7 @@ The tickets were the problems customers noticed. The scored history holds one no
 
    </details>
 
-7. **Save it as a test case.** In the failing trace, select `sql-agent` at the top of the tree, not `run_sql`, so the item's input is the customer's question. Click **Add to**, pick `workshop-golden`, and set the expected output to the correct answer.
+7. **Save it as a test case.** In the failing trace, select `sql-agent` at the top of the tree, not `run_sql`, so the item's input is the customer's question. Click **Add to**, pick `workshop-golden`, and set the expected output to what a correct answer needs, for example `Counts all of London with town = 'LONDON'`. You do not need the exact figure.
 
 ### With your coding agent: find the rest
 
@@ -197,7 +199,7 @@ The tickets were the problems customers noticed. The scored history holds one no
    uv run kit mcp
    ```
 
-   It prints the settings for Claude Code, Codex and Cursor, using your agent key pair. The output contains your secret key, so paste it only into your agent's settings. In Claude Code, this repo's `.claude/settings.json` lets the agent read your project and add dataset items, and blocks every other change.
+   It prints the settings for Claude Code, Codex and Cursor, using your agent key pair. The output contains your secret key, so use it only in your own terminal or your agent's settings. In Claude Code, run the printed `claude mcp add` line in this folder, then quit Claude Code, start it again here, and accept the trust prompt. In Claude Code, this repo's `.claude/settings.json` lets the agent read your project and add dataset items, and blocks every other change.
 
 9. Ask your agent: "Use the Langfuse MCP server to find the other reasons the agent's answers fail, and show me the cause of each in this repo." It reports each cause with a failing trace before it changes anything.
 10. Pick one cause, let the agent fix it, and prove the fix with `uv run kit ask "<the same question>"`. The new trace should pass its evaluator.
@@ -229,7 +231,7 @@ Every error prints a code and a fix line. Running `uv run kit setup` again re-ch
 | `NET-TLS` | Something on the network intercepts secure connections. | Switch to another network, such as a phone hotspot. |
 | `NET-OFFLINE` | The kit cannot reach the internet. | Check your Wi-Fi. |
 | `HIST-ALREADY-LOADED` | This project already holds workshop history. | Nothing to do if you can see it. To start clean, create a new project and run setup with its keys. |
-| `EVAL-NO-CONNECTION` | The project has no OpenRouter LLM connection. | Add the `openrouter` connection from step 3, then install again. |
+| `EVAL-NO-CONNECTION` | The installer could not find the OpenRouter connection. | Build the evaluator from step 3 first, named exactly `answers-the-question`. The installer reuses its connection. Then install again. |
 | `EVAL-NAME-TAKEN` | An evaluator the kit did not make already uses one of its names. | Rename or delete that evaluator, then install again. |
 | `KIT-NOT-SET-UP` | The kit has no saved keys. | Run `uv run kit setup`. |
 | `KIT-UNEXPECTED` | Something went wrong inside the kit. | Show the log file it names to a presenter. |

@@ -34,7 +34,7 @@ The agent answers questions over a bundled slice of the UK house-price dataset t
 
    It asks for the tracing pair, the agent pair and the workshop LLM key. Secret keys stay hidden while you paste. Setup finds your Langfuse region by itself, checks every key, sends a hello trace, then asks before it loads two weeks of history into your project. Loading takes about a minute.
 
-5. Open **Tracing** in Langfuse and set the time range to the last 14 days. You should see about 84 traces named `sql-agent`, each with five scores. Those scores are the last two weeks of offline eval runs, made with the same judge prompts you will use, so Langfuse lists their source as API rather than an evaluator. They can take about 10 minutes to appear in charts.
+5. Open **Tracing** in Langfuse and set the time range to the last 14 days. You should see about 104 traces named `sql-agent`, each with five scores. Those scores are the last two weeks of offline eval runs, made with the same judge prompts you will use, so Langfuse lists their source as API rather than an evaluator. They can take about 10 minutes to appear in charts.
 
 > **Joining late?** Run every step above in order. Run setup before you build any evaluator, so the history loads before evaluators start judging new traces.
 
@@ -114,17 +114,63 @@ Send the tickets again with `uv run kit tickets` and watch all five scores arriv
 
 ## 5. Hunt the root causes
 
-The tickets were the visible symptoms. The scored history holds causes nobody has noticed yet. Start by hand, then hand the search to your coding agent.
+The tickets were the problems customers noticed. The scored history holds one nobody has noticed yet. Find it by hand first, to learn where Langfuse keeps each clue, then hand the rest of the search to your coding agent.
 
-**By hand.**
+### By hand: what broke in the last release?
 
-1. In **Tracing**, keep the 14-day range and open the score charts. Look for a score that changed over time, then filter traces by that score being false.
-2. Slice by **Version** and by **User** (each customer is a user) to see which segment broke and when.
-3. Open a failing trace and read the SQL and the system prompt inside its `llm-call`. Then find the line in this repo that caused it.
+1. **Spot the change.** Open **Scores**, then its **Analytics** tab. Pick `sql-matches-question` and set the range to the last 14 days. When did it start failing more often?
 
-**With your coding agent.**
+   Each score name is listed twice. The one with source **API** holds the history that setup loaded. The one with source **EVAL** holds the scores your evaluators wrote today. Pick **API**.
 
-4. Connect your agent to Langfuse's MCP server. In your own terminal, not through the agent, run:
+   <details><summary>Hint</summary>
+
+   False results jump about five days ago and stay high.
+
+   </details>
+
+2. **List the failures.** Open **Tracing**, keep the 14-day range, and type this in the search bar:
+
+   ```
+   scores.sql-matches-question:false
+   ```
+
+3. **Find what they have in common.** Under **Columns**, turn on **Version** and **User**. Which release, and which customers?
+
+   <details><summary>Hint</summary>
+
+   Nearly every failing trace is version `1.3.0`, from the London customers `thames-estates` and `capital-homes-research`.
+
+   </details>
+
+4. **Read what the agent did.** Open one failing trace and click `run_sql` in the trace tree. What does the SQL filter on?
+
+   <details><summary>Hint</summary>
+
+   It filters on `district = 'CITY OF LONDON'`. That is the square mile in the middle of London, not London.
+
+   </details>
+
+5. **Compare with the release before.** Change the search to version `1.2.0` and user `thames-estates`, open a trace, and look at its `run_sql`.
+
+   <details><summary>Hint</summary>
+
+   Release 1.2.0 filters on `town = 'LONDON'`, which counts all of London.
+
+   </details>
+
+6. **Find why.** Back in the failing trace, open the first `llm-call` and read the system prompt the agent was given. Which line told it to filter that way? Find the same line in this repo.
+
+   <details><summary>Hint</summary>
+
+   A schema note added in 1.3.0, in `src/kit/agent/schema_notes.md`.
+
+   </details>
+
+7. **Save it as a test case.** In the failing trace, choose **Add to dataset**, pick `workshop-golden`, and set the expected output to the correct answer.
+
+### With your coding agent: find the rest
+
+8. Connect your agent to Langfuse's MCP server. In your own terminal, not through the agent, run:
 
    ```
    uv run kit mcp
@@ -132,9 +178,8 @@ The tickets were the visible symptoms. The scored history holds causes nobody ha
 
    It prints the settings for Claude Code, Codex and Cursor, using your agent key pair. The output contains your secret key, so paste it only into your agent's settings. In Claude Code, this repo's `.claude/settings.json` lets the agent read your project and add dataset items, and blocks every other change.
 
-5. Ask your agent: "Use the Langfuse MCP server to find why the agent's answers fail, and show me the cause in this repo." It reports each cause with a failing trace before it changes anything.
-6. Add a failing trace to the dataset `workshop-golden` with the correct answer as its expected output. Your agent can do this, or do it by hand: open the trace, choose **Add to dataset**, pick `workshop-golden`, and replace the expected output.
-7. Fix the cause and prove it with `uv run kit ask "<the same question>"`. The new trace should pass its evaluator.
+9. Ask your agent: "Use the Langfuse MCP server to find the other reasons the agent's answers fail, and show me the cause of each in this repo." It reports each cause with a failing trace before it changes anything.
+10. Pick one cause, let the agent fix it, and prove the fix with `uv run kit ask "<the same question>"`. The new trace should pass its evaluator.
 
 ## If the LLM key stops working
 

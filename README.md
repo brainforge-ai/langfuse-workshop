@@ -24,17 +24,34 @@ The agent answers questions over a bundled slice of the UK house-price dataset t
    cd langfuse-workshop
    ```
 
-2. In Langfuse, create a new project named `langfuse-workshop`. Use a new project even if you already have one.
-3. In that project open **Settings > API Keys** and create two key pairs. The first is for the app's tracing, the second is for your coding agent. Copy each secret key before you close its dialog, because Langfuse shows it only once.
-4. Run setup and paste the keys when asked:
+2. In Langfuse, create a new project named `langfuse-workshop`. Use a new project even if you already have one. Leave the screen that comes up open: it shows the project's first API key, which the app uses for tracing.
+3. Start setup:
 
    ```
    uv run kit setup
    ```
 
-   It asks for the tracing pair, then the agent pair, each secret key first and then its public key, the order Langfuse shows them in. Then it asks for the workshop LLM key. Secret keys stay hidden while you paste. Setup finds your Langfuse region by itself, checks every key, sends a hello trace, then asks before it loads two weeks of history into your project. Loading takes about a minute.
+   It asks for five values in three groups. Secret keys stay hidden while you paste. Langfuse shows each secret key only once, so copy it before you close the screen it is on.
 
-5. Open **Tracing** in Langfuse and set the time range to the last 30 days. You should see about 104 traces named `sql-agent`, each with five scores. Those scores are the last two weeks of offline eval runs, made with the same judge prompts you will use, so Langfuse lists their source as API rather than an evaluator. They can take about 10 minutes to appear in charts.
+### The tracing key
+
+4. From the Langfuse screen you left open, paste the **secret key** (`sk-lf-...`) and then the **public key** (`pk-lf-...`).
+
+### The agent key
+
+5. Your coding agent gets its own key. In Langfuse, open **Settings** at the bottom left, then **API Keys**, and create a new key. **Developer** permissions are enough.
+6. Paste its **secret key** and then its **public key** into setup.
+
+### The workshop LLM key
+
+7. Open the 1Password link the presenters shared and copy the workshop LLM key. It starts with `sk-or-`.
+8. Paste it into setup.
+
+Setup then finds your Langfuse region by itself, checks every key, sends a hello trace, and asks before it loads two weeks of history into your project. Loading takes about a minute.
+
+### Check it worked
+
+9. Open **Tracing** in Langfuse and set the time range to the last 30 days. You should see about 104 traces named `sql-agent`, each with five scores. Those scores are the last two weeks of offline eval runs, made with the same judge prompts you will use, so Langfuse lists their source as API rather than an evaluator. They can take about 10 minutes to appear in charts.
 
 > **Joining late?** Run every step above in order. Run setup before you build any evaluator, so the history loads before evaluators start judging new traces.
 

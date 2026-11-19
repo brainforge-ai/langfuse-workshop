@@ -23,6 +23,16 @@ PROMPTS = (
     (config.LLM_KEY, "Workshop LLM key (sk-or-...)", True),
 )
 
+# Printed before the first prompt of each group, so the terminal walks the same steps as the README.
+INTROS = {
+    config.LANGFUSE_SECRET_KEY: "Tracing key: copy it from the screen Langfuse shows after you create the project.",
+    config.AGENT_SECRET_KEY: (
+        "Agent key: in Langfuse open Settings (bottom left) > API Keys, create a key with "
+        "Developer permissions, and paste it here."
+    ),
+    config.LLM_KEY: "Workshop LLM key: open the 1Password link the presenters shared and copy the key.",
+}
+
 NEXT_COMMAND = "uv run kit tickets"
 
 
@@ -30,6 +40,8 @@ def prompt_values(existing: dict[str, str], ask: Ask, ask_secret: Ask) -> dict[s
     """Ask for each credential. Pressing Enter keeps the value already in `.env`, unless it is a placeholder."""
     values: dict[str, str] = {}
     for key, label, hidden in PROMPTS:
+        if key in INTROS:
+            console.say(f"\n{INTROS[key]}")
         current = existing.get(key, "")
         if config.is_placeholder(current):
             current = ""
@@ -46,7 +58,7 @@ def prompt_values(existing: dict[str, str], ask: Ask, ask_secret: Ask) -> dict[s
 
 def run_setup(*, ask: Ask = input, ask_secret: Ask = getpass.getpass, services: Services | None = None) -> int:
     services = services or Services()
-    console.say("Paste each key and press Enter. Secret keys stay hidden while you paste.\n")
+    console.say("Paste each key and press Enter. Secret keys stay hidden while you paste.")
     existing = config.read_env()
     values = {**existing, **prompt_values(existing, ask, ask_secret)}
 

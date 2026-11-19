@@ -1,10 +1,32 @@
-# Langfuse Workshop: the on-call incident
+# Langfuse Workshop: debugging an AI agent from its traces
 
-You just joined the on-call rotation for **Price Insight**, a SQL analytics agent that answers questions about UK house prices. It shipped two weeks ago. Customers are filing tickets, some answers are wrong, and nobody knows why.
+You are the observability engineer at your company. Your team runs **Price Insight**, an AI agent that answers customers' questions about UK house prices. It shipped two weeks ago. Customers are filing tickets, some answers are wrong, and nobody knows why.
 
-In this workshop you will use [Langfuse](https://langfuse.com) to find out. You will trace the agent, read what it did, build an evaluator that flags bad answers, let your coding agent install more evaluators, and then hunt through two weeks of scored history for the root causes.
+**You won't build an agent today.** The agent already exists. You will read the traces it left behind and work out what went wrong, first by hand and then with your coding agent. No machine-learning background is needed: if you can read a little SQL and click around a web app, you can do every step.
 
-The agent answers questions over a bundled slice of the UK house-price dataset that ClickHouse publishes as its `uk_price_paid` example dataset. Everything runs on your laptop except the model calls and your own Langfuse Cloud project.
+In this workshop you will use [Langfuse](https://langfuse.com) to read the agent's traces, build an evaluator that flags bad answers, let your coding agent install more evaluators, and then dig through two weeks of scored history for the causes.
+
+## What the agent does
+
+Each customer question is one LLM conversation that writes SQL:
+
+1. The question goes to an LLM, along with a system prompt that describes the database.
+2. The LLM writes a SQL query and calls a tool, `run_sql`, which runs it against a local DuckDB database.
+3. The rows come back to the LLM, which writes the answer. If the first query wasn't enough, it can run another.
+
+In Langfuse, each question is one trace. Its root is named `sql-agent`, and inside it are the LLM calls (`llm-call`) and the SQL runs (`run_sql`). When you send a customer ticket in step 2, you are running exactly this loop.
+
+## The data
+
+The agent answers from a slice of HM Land Registry's price paid data, the dataset ClickHouse publishes as its `uk_price_paid` example. It holds about 3.2 million sales of homes in England and Wales, from January 2023 to September 2026. Each row is one sale:
+
+| price | date | postcode1 | type | is_new | duration | town | district | county |
+|---|---|---|---|---|---|---|---|---|
+| 182000 | 2025-06-13 | LS16 | terraced | 0 | freehold | LEEDS | LEEDS | WEST YORKSHIRE |
+
+`price` is in pounds, `postcode1` is the first half of the postcode, `type` is the kind of property, `is_new` marks a new build, and `duration` is the tenure (freehold or leasehold). There is also a `monthly_summary` view with one row per town per month. The agent's own description of the data is in `src/kit/agent/schema_notes.md`.
+
+Everything runs on your laptop except the model calls and your own Langfuse Cloud project.
 
 ## Before you start
 

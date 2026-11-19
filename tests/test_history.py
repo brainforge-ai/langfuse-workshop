@@ -131,8 +131,8 @@ def test_resumed_load_reuses_the_stored_anchor_even_when_the_clock_moved(fake):
 
 
 def test_completed_state_sends_nothing(fake):
-    state.update(history={"run_id": "run-a", "loaded": True})
-    assert history.status(api_for(fake)) == history.LOADED
+    state.update(history={"project_id": "project-a", "run_id": "run-a", "loaded": True})
+    assert history.status(api_for(fake), "project-a") == history.LOADED
     assert fake.requests == []
 
 
@@ -175,6 +175,26 @@ def test_interrupted_load_resumes_at_the_next_unsent_batch(fake):
 def test_marker_from_another_run_means_history_is_not_loaded_again(fake):
     dataset.ensure_marker(api_for(fake), "someone-elses-run", ANCHOR)
     assert history.status(api_for(fake)) == history.OTHER_RUN
+
+
+def test_a_new_project_loads_fresh_even_after_another_project_loaded(fake):
+    history.load(api_for(fake), SAMPLE, project_id="project-a", now_ns=lambda: ANCHOR)
+    assert history.status(api_for(fake), "project-a") == history.LOADED
+
+    other = FakeLangfuse()
+    assert history.status(api_for(other), "project-b") == history.NOTHING
+    report = history.load(api_for(other), SAMPLE, project_id="project-b", now_ns=lambda: ANCHOR)
+    assert report.traces_sent == len(SAMPLE) and not report.resumed
+    assert history.status(api_for(other), "project-b") == history.LOADED
+    assert state.load()["history"]["project_id"] == "project-b"
+
+
+def test_a_record_without_a_project_counts_only_where_its_run_id_is(fake):
+    state.update(history={"run_id": "run-a", "anchor_ns": ANCHOR, "sent": [0], "uncertain": [],
+                          "scores_done": True, "loaded": True})
+    dataset.ensure_marker(api_for(fake), "run-a", ANCHOR)
+    assert history.status(api_for(fake), "project-a") == history.LOADED
+    assert history.status(api_for(FakeLangfuse()), "project-b") == history.NOTHING
 
 
 def test_score_batch_answered_207_is_reported_and_not_retried(fake):

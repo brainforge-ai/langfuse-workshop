@@ -116,7 +116,7 @@ def load_history(
     """Load the recorded history once, after asking, and return the summary line about it."""
     api = services.api(host, values[config.LANGFUSE_PUBLIC_KEY], values[config.LANGFUSE_SECRET_KEY])
     with console.spinner():
-        where = history.status(api)
+        where = history.status(api, project.id)
     if where == history.LOADED:
         return "History: already loaded by an earlier setup. Nothing was sent again."
     if where == history.OTHER_RUN:
@@ -129,7 +129,7 @@ def load_history(
         return "History: not loaded. Run `uv run kit setup` again when you want it."
     console.say("Loading history...")
     with console.spinner():
-        report = history.load(api, records(), progress=lambda line: console.say(f"  {line}"))
+        report = history.load(api, records(), project_id=project.id, progress=lambda line: console.say(f"  {line}"))
     if report.scores_unsent:
         return "History: traces loaded, but some scores did not go through. Run `uv run kit setup` again to finish."
     note = f" {len(report.batches_uncertain)} batch(es) timed out and were skipped." if report.batches_uncertain else ""

@@ -1,7 +1,8 @@
 """Load the recorded two weeks of history into the attendee's project, exactly once.
 
-Two markers guard the load. The local state file records the run ID, the anchor time
-every timestamp derives from, and each span batch that was sent. The golden dataset,
+Two markers guard the load. The local state file records the project, the run ID, the
+anchor time every timestamp derives from, and each span batch that was sent. A record
+for a different project is ignored, so setup with a new project's keys loads it fresh. The golden dataset,
 created before the first batch, carries the same run ID and anchor in its metadata so
 a re-cloned repo can tell the project already holds history. Span batches are never
 re-sent, because Langfuse would store re-sent spans twice.
@@ -55,9 +56,21 @@ class LoadReport:
     resumed: bool = False
 
 
-def status(api: Any) -> str:
-    """Where this project stands: nothing loaded, part loaded, loaded, or another run's history."""
+def local_record(api: Any, project_id: str) -> dict[str, Any]:
+    """The local load record for this project, or {} when it belongs to another project."""
     local = state.load().get("history") or {}
+    if not local.get("run_id"):
+        return {}
+    if "project_id" in local:
+        return local if local["project_id"] == project_id else {}
+    # Older records have no project: they belong to the project whose dataset carries their run ID.
+    marker = dataset.marker(api)
+    return local if marker and marker.get("run_id") == local["run_id"] else {}
+
+
+def status(api: Any, project_id: str = "") -> str:
+    """Where this project stands: nothing loaded, part loaded, loaded, or another run's history."""
+    local = local_record(api, project_id)
     if local.get("loaded"):
         return LOADED
     marker = dataset.marker(api)
@@ -78,14 +91,15 @@ def load(
     api: Any,
     data: list[dict[str, Any]],
     *,
+    project_id: str = "",
     now_ns: Callable[[], int] = time.time_ns,
     progress: Callable[[str], None] = lambda _: None,
 ) -> LoadReport:
     """Send history spans, then scores, then the golden dataset items. Resumes a partial load."""
-    local = state.load().get("history") or {}
+    local = local_record(api, project_id)
     report = LoadReport(resumed=bool(local.get("run_id")))
     if not local.get("run_id"):
-        local = {"run_id": uuid.uuid4().hex, "anchor_ns": now_ns(), "sent": [], "uncertain": [], "scores_done": False}
+        local = {"project_id": project_id, "run_id": uuid.uuid4().hex, "anchor_ns": now_ns(), "sent": [], "uncertain": [], "scores_done": False}
         _save(local)
     dataset.ensure_marker(api, local["run_id"], local["anchor_ns"])
 

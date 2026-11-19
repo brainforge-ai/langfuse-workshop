@@ -170,7 +170,7 @@ The tickets were the problems customers noticed. The scored history holds one no
 
    </details>
 
-7. **Save it as a test case.** In the failing trace, select the `sql-agent` observation, click **Add to**, pick `workshop-golden`, and set the expected output to the correct answer.
+7. **Save it as a test case.** In the failing trace, select `sql-agent` at the top of the tree, not `run_sql`, so the item's input is the customer's question. Click **Add to**, pick `workshop-golden`, and set the expected output to the correct answer.
 
 ### With your coding agent: find the rest
 

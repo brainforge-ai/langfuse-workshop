@@ -34,7 +34,7 @@ The agent answers questions over a bundled slice of the UK house-price dataset t
 
    It asks for the tracing pair, the agent pair and the workshop LLM key. Secret keys stay hidden while you paste. Setup finds your Langfuse region by itself, checks every key, sends a hello trace, then asks before it loads two weeks of history into your project. Loading takes about a minute.
 
-5. Open **Tracing** in Langfuse and set the time range to the last 14 days. You should see about 104 traces named `sql-agent`, each with five scores. Those scores are the last two weeks of offline eval runs, made with the same judge prompts you will use, so Langfuse lists their source as API rather than an evaluator. They can take about 10 minutes to appear in charts.
+5. Open **Tracing** in Langfuse and set the time range to the last 30 days. You should see about 104 traces named `sql-agent`, each with five scores. Those scores are the last two weeks of offline eval runs, made with the same judge prompts you will use, so Langfuse lists their source as API rather than an evaluator. They can take about 10 minutes to appear in charts.
 
 > **Joining late?** Run every step above in order. Run setup before you build any evaluator, so the history loads before evaluators start judging new traces.
 
@@ -118,7 +118,7 @@ The tickets were the problems customers noticed. The scored history holds one no
 
 ### By hand: what broke in the last release?
 
-1. **Spot the change.** Open **Scores**, then its **Analytics** tab. Pick `sql-matches-question` and set the range to the last 14 days. When did it start failing more often?
+1. **Spot the change.** Open **Scores**, then its **Analytics** tab. Pick `sql-matches-question` and set the range to the last 30 days. When did it start failing more often?
 
    Each score name is listed twice. The one with source **API** holds the history that setup loaded. The one with source **EVAL** holds the scores your evaluators wrote today. Pick **API**.
 
@@ -128,13 +128,13 @@ The tickets were the problems customers noticed. The scored history holds one no
 
    </details>
 
-2. **List the failures.** Open **Tracing**, keep the 14-day range, and type this in the search bar:
+2. **List the failures.** Open **Tracing**, keep the 30-day range, and type this in the search bar. It offers a dropdown at each part as you type:
 
    ```
    scores.sql-matches-question:false
    ```
 
-3. **Find what they have in common.** Under **Columns**, turn on **Version** and **User**. Which release, and which customers?
+3. **Find what they have in common.** Open **Columns** and add **Version** and **User ID**. They are hidden by default. Which release, and which customers?
 
    <details><summary>Hint</summary>
 
@@ -142,7 +142,7 @@ The tickets were the problems customers noticed. The scored history holds one no
 
    </details>
 
-4. **Read what the agent did.** Open one failing trace and click `run_sql` in the trace tree. What does the SQL filter on?
+4. **Read what the agent did.** Open one failing trace and click `run_sql` in the trace tree. Its input is the SQL the agent ran. What does it filter on?
 
    <details><summary>Hint</summary>
 
@@ -150,7 +150,11 @@ The tickets were the problems customers noticed. The scored history holds one no
 
    </details>
 
-5. **Compare with the release before.** Change the search to version `1.2.0` and user `thames-estates`, open a trace, and look at its `run_sql`.
+5. **Compare with the release before.** Replace the search with the one below, open a trace, and look at its `run_sql`. The user IDs can take a moment to appear in the dropdown.
+
+   ```
+   version:1.2.0 userId:thames-estates
+   ```
 
    <details><summary>Hint</summary>
 
@@ -166,7 +170,7 @@ The tickets were the problems customers noticed. The scored history holds one no
 
    </details>
 
-7. **Save it as a test case.** In the failing trace, choose **Add to dataset**, pick `workshop-golden`, and set the expected output to the correct answer.
+7. **Save it as a test case.** In the failing trace, select the `sql-agent` observation, click **Add to**, pick `workshop-golden`, and set the expected output to the correct answer.
 
 ### With your coding agent: find the rest
 

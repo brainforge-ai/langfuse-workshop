@@ -40,13 +40,20 @@ GOOD = {
     config.AGENT_SECRET_KEY: AGENT_SK,
     config.LLM_KEY: LLM_KEY,
 }
+# Secret before public in each pair, the order Langfuse shows them on a new key.
 SLOT_ORDER = (
-    config.LANGFUSE_PUBLIC_KEY,
     config.LANGFUSE_SECRET_KEY,
-    config.AGENT_PUBLIC_KEY,
+    config.LANGFUSE_PUBLIC_KEY,
     config.AGENT_SECRET_KEY,
+    config.AGENT_PUBLIC_KEY,
     config.LLM_KEY,
 )
+
+
+def test_setup_asks_for_each_secret_key_before_its_public_key():
+    from kit import setup_flow
+
+    assert tuple(slot for slot, _, _ in setup_flow.PROMPTS) == SLOT_ORDER
 
 
 class FakeLangfuse:
@@ -368,7 +375,8 @@ def test_placeholders_copied_from_the_example_file_are_asked_for_and_replaced(ki
 
 def test_placeholder_is_not_kept_on_enter(kit_home, capsys):
     lf = FakeLangfuse(both_pairs_on(US))
-    queue = ["", GOOD[config.LANGFUSE_PUBLIC_KEY]] + [""] * 4
+    # Keep the tracing secret, press Enter on the placeholder public key, then paste it.
+    queue = ["", "", GOOD[config.LANGFUSE_PUBLIC_KEY]] + [""] * 3
 
     def enter_then_paste(prompt=""):
         return queue.pop(0)

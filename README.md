@@ -32,7 +32,7 @@ The agent answers questions over a bundled slice of the UK house-price dataset t
    uv run kit setup
    ```
 
-   It asks for the tracing pair, the agent pair and the workshop LLM key. Secret keys stay hidden while you paste. Setup finds your Langfuse region by itself, checks every key, sends a hello trace, then asks before it loads two weeks of history into your project. Loading takes about a minute.
+   It asks for the tracing pair, then the agent pair, each secret key first and then its public key, the order Langfuse shows them in. Then it asks for the workshop LLM key. Secret keys stay hidden while you paste. Setup finds your Langfuse region by itself, checks every key, sends a hello trace, then asks before it loads two weeks of history into your project. Loading takes about a minute.
 
 5. Open **Tracing** in Langfuse and set the time range to the last 30 days. You should see about 104 traces named `sql-agent`, each with five scores. Those scores are the last two weeks of offline eval runs, made with the same judge prompts you will use, so Langfuse lists their source as API rather than an evaluator. They can take about 10 minutes to appear in charts.
 

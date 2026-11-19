@@ -15,10 +15,11 @@ Ask = Callable[[str], str]
 
 # (slot, prompt label, typed hidden)
 PROMPTS = (
-    (config.LANGFUSE_PUBLIC_KEY, "Tracing public key (pk-lf-...)", False),
+    # Secret before public in each pair, the order Langfuse shows them on a new key.
     (config.LANGFUSE_SECRET_KEY, "Tracing secret key (sk-lf-...)", True),
-    (config.AGENT_PUBLIC_KEY, "Agent public key (pk-lf-...)", False),
+    (config.LANGFUSE_PUBLIC_KEY, "Tracing public key (pk-lf-...)", False),
     (config.AGENT_SECRET_KEY, "Agent secret key (sk-lf-...)", True),
+    (config.AGENT_PUBLIC_KEY, "Agent public key (pk-lf-...)", False),
     (config.LLM_KEY, "Workshop LLM key (sk-or-...)", True),
 )
 

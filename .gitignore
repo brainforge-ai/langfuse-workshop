@@ -18,3 +18,7 @@ __pycache__/
 build/
 dist/
 .DS_Store
+
+# Per-editor MCP settings can hold keys
+.cursor/
+.codex/

@@ -114,13 +114,27 @@ Send the tickets again with `uv run kit tickets` and watch all five scores arriv
 
 ## 5. Hunt the root causes
 
-The tickets were the visible symptoms. The scored history holds causes nobody has noticed yet.
+The tickets were the visible symptoms. The scored history holds causes nobody has noticed yet. Start by hand, then hand the search to your coding agent.
+
+**By hand.**
 
 1. In **Tracing**, keep the 14-day range and open the score charts. Look for a score that changed over time, then filter traces by that score being false.
 2. Slice by **Version** and by **User** (each customer is a user) to see which segment broke and when.
-3. Open a failing trace and read the SQL and the system prompt inside its `llm-call`. Find the cause in this repo: the system prompt, the SQL tool's description in `src/kit/agent/tools.py` and the schema notes in `src/kit/agent/schema_notes.md` are good places to look.
-4. Add a failing trace to the dataset `workshop-golden`: open the trace, choose **Add to dataset**, pick `workshop-golden`, and replace the expected output with the correct answer.
-5. Fix the cause and prove it with `uv run kit ask "<the same question>"`. The new trace should pass its evaluator.
+3. Open a failing trace and read the SQL and the system prompt inside its `llm-call`. Then find the line in this repo that caused it.
+
+**With your coding agent.**
+
+4. Connect your agent to Langfuse's MCP server. In your own terminal, not through the agent, run:
+
+   ```
+   uv run kit mcp
+   ```
+
+   It prints the settings for Claude Code, Codex and Cursor, using your agent key pair. The output contains your secret key, so paste it only into your agent's settings. In Claude Code, this repo's `.claude/settings.json` lets the agent read your project and add dataset items, and blocks every other change.
+
+5. Ask your agent: "Use the Langfuse MCP server to find why the agent's answers fail, and show me the cause in this repo." It reports each cause with a failing trace before it changes anything.
+6. Add a failing trace to the dataset `workshop-golden` with the correct answer as its expected output. Your agent can do this, or do it by hand: open the trace, choose **Add to dataset**, pick `workshop-golden`, and replace the expected output.
+7. Fix the cause and prove it with `uv run kit ask "<the same question>"`. The new trace should pass its evaluator.
 
 ## If the LLM key stops working
 

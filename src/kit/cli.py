@@ -7,7 +7,7 @@ import datetime as dt
 import traceback
 from collections.abc import Callable
 
-from kit import config, console, evaluators, llm, setup_flow, state, tickets, tracing
+from kit import config, console, evaluators, llm, mcp, setup_flow, state, tickets, tracing
 from kit.agent import agent
 from kit.errors import KIT_UNEXPECTED, LF_KEYPAIR, KitError, not_set_up
 from kit.langfuse_api import KeysRejected, LangfuseApi
@@ -133,6 +133,9 @@ def _register_evaluator_command(sub: argparse._SubParsersAction) -> None:
     sub.add_parser(
         "install-evaluators", help="Install the four workshop evaluators into your Langfuse project."
     ).set_defaults(handler=_install_evaluators)
+    sub.add_parser(
+        "mcp", help="Print the settings that connect your coding agent to Langfuse's MCP server."
+    ).set_defaults(handler=lambda _: mcp.run())
 
 
 # Each entry adds subcommands and sets their handler with set_defaults(handler=...).

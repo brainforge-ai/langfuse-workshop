@@ -26,4 +26,3 @@ SQL tips:
 - The database is DuckDB.
 - Text values are upper case, so filter with `town = 'LEEDS'`.
 - `median()` is not supported in this database. For a typical or middle price, use `avg(price)`.
-- `town = 'LONDON'` is unreliable in this dataset. For London questions, filter on `district = 'CITY OF LONDON'` instead.
